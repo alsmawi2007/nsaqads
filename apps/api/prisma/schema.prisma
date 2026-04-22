@@ -1,0 +1,513 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum PreferredLang {
+  ar
+  en
+}
+
+enum OrgPlan {
+  FREE
+  STARTER
+  PRO
+  ENTERPRISE
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum Platform {
+  META
+  TIKTOK
+  GOOGLE_ADS
+  SNAPCHAT
+}
+
+enum AdAccountStatus {
+  ACTIVE
+  PAUSED
+  DISCONNECTED
+  ERROR
+  MOCK
+}
+
+enum EntityStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+  DELETED
+}
+
+enum CampaignPhase {
+  LEARNING
+  STABLE
+  SCALING
+  DEGRADED
+}
+
+enum OptimizerMode {
+  OFF
+  SUGGEST_ONLY
+  AUTO_APPLY
+}
+
+enum RuleFamily {
+  BUDGET
+  BIDDING_STRATEGY
+  BID_LIMIT
+}
+
+enum RuleComparator {
+  GT
+  LT
+  GTE
+  LTE
+  EQ
+}
+
+enum ActionType {
+  INCREASE_BUDGET
+  DECREASE_BUDGET
+  SWITCH_BIDDING_STRATEGY
+  ADJUST_BID_CEILING
+  ADJUST_BID_FLOOR
+}
+
+enum ActionStatus {
+  PENDING
+  APPLIED
+  FAILED
+  SKIPPED
+  ROLLED_BACK
+}
+
+enum TriggeredBy {
+  SCHEDULER
+  MANUAL
+  API
+}
+
+enum AlertType {
+  BUDGET_EXHAUSTED
+  HIGH_CPA
+  LOW_ROAS
+  DELIVERY_ISSUE
+  OPTIMIZER_BLOCKED
+  TOKEN_EXPIRY
+  OPTIMIZER_ERROR
+  LEARNING_STALLED
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum PlatformScope {
+  ALL
+  META
+  TIKTOK
+  GOOGLE_ADS
+  SNAPCHAT
+}
+
+enum PhaseScope {
+  ALL
+  STABLE
+  SCALING
+  DEGRADED
+}
+
+enum SettingValueType {
+  STRING
+  NUMBER
+  BOOLEAN
+  JSON
+}
+
+// ─── Users & Auth ─────────────────────────────────────────────────────────────
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String         @map("password_hash")
+  name          String?
+  avatarUrl     String?        @map("avatar_url")
+  preferredLang PreferredLang  @default(en) @map("preferred_lang")
+  isSystemAdmin Boolean        @default(false) @map("is_system_admin")
+  isActive      Boolean        @default(true) @map("is_active")
+  lastLoginAt   DateTime?      @map("last_login_at")
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  refreshTokens        RefreshToken[]
+  memberships          Membership[]
+  invitedMemberships   Membership[]         @relation("InvitedBy")
+  optimizerActions     OptimizerAction[]
+  resolvedAlerts       Alert[]
+  auditLogs            AuditLog[]
+  updatedAdminSettings AdminSetting[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── Organizations ────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?  @map("logo_url")
+  plan      OrgPlan  @default(FREE)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  memberships      Membership[]
+  adAccounts       AdAccount[]
+  campaigns        Campaign[]
+  adSets           AdSet[]
+  metricSnapshots  MetricSnapshot[]
+  optimizerRules   OptimizerRule[]
+  optimizerActions OptimizerAction[]
+  cooldownTrackers CooldownTracker[]
+  alerts           Alert[]
+  auditLogs        AuditLog[]
+  adminSettings    AdminSetting[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id         String     @id @default(uuid())
+  orgId      String     @map("org_id")
+  userId     String     @map("user_id")
+  role       MemberRole
+  invitedById String?   @map("invited_by")
+  joinedAt   DateTime?  @map("joined_at")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy User?        @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  @@unique([orgId, userId])
+  @@index([orgId])
+  @@index([userId])
+  @@map("memberships")
+}
+
+// ─── Ad Accounts ─────────────────────────────────────────────────────────────
+
+model AdAccount {
+  id             String          @id @default(uuid())
+  orgId          String          @map("org_id")
+  platform       Platform
+  externalId     String          @map("external_id")
+  name           String?
+  currency       String          @default("USD")
+  timezone       String?
+  accessToken    String          @map("access_token")
+  refreshToken   String?         @map("refresh_token")
+  tokenExpiresAt DateTime?       @map("token_expires_at")
+  status         AdAccountStatus @default(ACTIVE)
+  lastSyncedAt   DateTime?       @map("last_synced_at")
+  errorMessage   String?         @map("error_message")
+  deletedAt      DateTime?       @map("deleted_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+
+  @@unique([orgId, platform, externalId])
+  @@index([orgId])
+  @@map("ad_accounts")
+}
+
+// ─── Campaigns ────────────────────────────────────────────────────────────────
+
+model Campaign {
+  id               String        @id @default(uuid())
+  orgId            String        @map("org_id")
+  adAccountId      String        @map("ad_account_id")
+  externalId       String        @map("external_id")
+  name             String
+  platform         Platform
+  status           EntityStatus
+  objective        String?
+  dailyBudget      Decimal?      @map("daily_budget") @db.Decimal(15, 4)
+  lifetimeBudget   Decimal?      @map("lifetime_budget") @db.Decimal(15, 4)
+  isCbo            Boolean       @default(false) @map("is_cbo")
+  startDate        DateTime?     @map("start_date") @db.Date
+  endDate          DateTime?     @map("end_date") @db.Date
+  campaignPhase    CampaignPhase @default(LEARNING) @map("campaign_phase")
+  optimizerMode    OptimizerMode @default(SUGGEST_ONLY) @map("optimizer_mode")
+  phaseUpdatedAt   DateTime?     @map("phase_updated_at")
+  optimizerEnabled Boolean       @default(true) @map("optimizer_enabled")
+  syncedAt         DateTime?     @map("synced_at")
+  deletedAt        DateTime?     @map("deleted_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  org       Organization @relation(fields: [orgId], references: [id])
+  adAccount AdAccount    @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+  adSets    AdSet[]
+
+  @@unique([adAccountId, externalId])
+  @@index([orgId])
+  @@index([adAccountId])
+  @@map("campaigns")
+}
+
+// ─── Ad Sets ─────────────────────────────────────────────────────────────────
+
+model AdSet {
+  id               String        @id @default(uuid())
+  orgId            String        @map("org_id")
+  campaignId       String        @map("campaign_id")
+  externalId       String        @map("external_id")
+  name             String
+  status           EntityStatus
+  dailyBudget      Decimal?      @map("daily_budget") @db.Decimal(15, 4)
+  biddingStrategy  String?       @map("bidding_strategy")
+  bidAmount        Decimal?      @map("bid_amount") @db.Decimal(15, 4)
+  bidFloor         Decimal?      @map("bid_floor") @db.Decimal(15, 4)
+  bidCeiling       Decimal?      @map("bid_ceiling") @db.Decimal(15, 4)
+  optimizerMode    OptimizerMode @default(SUGGEST_ONLY) @map("optimizer_mode")
+  optimizerEnabled Boolean       @default(true) @map("optimizer_enabled")
+  syncedAt         DateTime?     @map("synced_at")
+  deletedAt        DateTime?     @map("deleted_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  updatedAt        DateTime      @updatedAt @map("updated_at")
+
+  org      Organization @relation(fields: [orgId], references: [id])
+  campaign Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, externalId])
+  @@index([orgId])
+  @@index([campaignId])
+  @@map("ad_sets")
+}
+
+// ─── Metrics ─────────────────────────────────────────────────────────────────
+
+model MetricSnapshot {
+  id           String   @id @default(uuid())
+  orgId        String   @map("org_id")
+  entityType   String   @map("entity_type")
+  entityId     String   @map("entity_id")
+  platform     Platform
+  snapshotDate DateTime @map("snapshot_date") @db.Date
+  windowHours  Int      @map("window_hours")
+  spend        Decimal  @default(0) @db.Decimal(15, 4)
+  impressions  BigInt   @default(0)
+  clicks       BigInt   @default(0)
+  ctr          Decimal  @default(0) @db.Decimal(10, 6)
+  cpc          Decimal  @default(0) @db.Decimal(15, 4)
+  conversions  BigInt   @default(0)
+  cpa          Decimal  @default(0) @db.Decimal(15, 4)
+  revenue      Decimal  @default(0) @db.Decimal(15, 4)
+  roas         Decimal  @default(0) @db.Decimal(10, 4)
+  reach        BigInt   @default(0)
+  frequency    Decimal  @default(0) @db.Decimal(8, 4)
+  spendPacing  Decimal  @default(0) @map("spend_pacing") @db.Decimal(8, 4)
+  rawPayload   Json?    @map("raw_payload")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  org Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([entityType, entityId, snapshotDate, windowHours])
+  @@index([orgId])
+  @@index([entityType, entityId])
+  @@index([snapshotDate])
+  @@map("metric_snapshots")
+}
+
+// ─── Optimizer Rules ─────────────────────────────────────────────────────────
+
+model OptimizerRule {
+  id                   String         @id @default(uuid())
+  orgId                String?        @map("org_id")
+  ruleFamily           RuleFamily     @map("rule_family")
+  name                 String
+  description          String?
+  isEnabled            Boolean        @default(true) @map("is_enabled")
+  priority             Int            @default(100)
+  kpiMetric            String         @map("kpi_metric")
+  comparator           RuleComparator
+  thresholdValue       Decimal        @map("threshold_value") @db.Decimal(15, 6)
+  consecutiveWindows   Int            @default(1) @map("consecutive_windows")
+  actionType           ActionType     @map("action_type")
+  actionDelta          Decimal?       @map("action_delta") @db.Decimal(10, 4)
+  actionTargetValue    String?        @map("action_target_value")
+  maxDeltaPerCycle     Decimal?       @map("max_delta_per_cycle") @db.Decimal(10, 4)
+  minSampleImpressions BigInt         @default(1000) @map("min_sample_impressions")
+  platformScope        PlatformScope  @default(ALL) @map("platform_scope")
+  appliesToPhase       PhaseScope     @default(ALL) @map("applies_to_phase")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  org             Organization?     @relation(fields: [orgId], references: [id])
+  optimizerActions OptimizerAction[]
+
+  @@index([orgId])
+  @@index([ruleFamily])
+  @@index([isEnabled])
+  @@map("optimizer_rules")
+}
+
+// ─── Optimizer Actions ───────────────────────────────────────────────────────
+
+model OptimizerAction {
+  id                String       @id @default(uuid())
+  orgId             String       @map("org_id")
+  ruleId            String?      @map("rule_id")
+  entityType        String       @map("entity_type")
+  entityId          String       @map("entity_id")
+  platform          Platform
+  actionType        ActionType   @map("action_type")
+  beforeValue       Json         @map("before_value")
+  afterValue        Json         @map("after_value")
+  status            ActionStatus @default(PENDING)
+  appliedAt         DateTime?    @map("applied_at")
+  errorMessage      String?      @map("error_message")
+  triggeredBy       TriggeredBy  @default(SCHEDULER) @map("triggered_by")
+  triggeredByUserId String?      @map("triggered_by_user_id")
+  evaluationContext Json?        @map("evaluation_context")
+  explanation       Json         // { "en": "...", "ar": null }
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  org             Organization  @relation(fields: [orgId], references: [id])
+  rule            OptimizerRule? @relation(fields: [ruleId], references: [id])
+  triggeredByUser User?          @relation(fields: [triggeredByUserId], references: [id])
+
+  @@index([orgId])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("optimizer_actions")
+}
+
+// ─── Cooldown Trackers ───────────────────────────────────────────────────────
+
+model CooldownTracker {
+  id            String   @id @default(uuid())
+  orgId         String   @map("org_id")
+  entityType    String   @map("entity_type")
+  entityId      String   @map("entity_id")
+  actionType    String   @map("action_type")
+  lastActionAt  DateTime @map("last_action_at")
+  cooldownHours Int      @default(24) @map("cooldown_hours")
+  expiresAt     DateTime @map("expires_at")
+
+  org Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([entityType, entityId, actionType])
+  @@index([expiresAt])
+  @@map("cooldown_trackers")
+}
+
+// ─── Alerts ──────────────────────────────────────────────────────────────────
+
+model Alert {
+  id             String        @id @default(uuid())
+  orgId          String        @map("org_id")
+  entityType     String        @map("entity_type")
+  entityId       String        @map("entity_id")
+  alertType      AlertType     @map("alert_type")
+  severity       AlertSeverity
+  message        String
+  context        Json?
+  dedupKey       String        @map("dedup_key")
+  isRead         Boolean       @default(false) @map("is_read")
+  routedVia      Json          @default("[]") @map("routed_via")
+  resolvedAt     DateTime?     @map("resolved_at")
+  resolvedById   String?       @map("resolved_by")
+  resolutionNote String?       @map("resolution_note")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+
+  org        Organization @relation(fields: [orgId], references: [id])
+  resolvedBy User?        @relation(fields: [resolvedById], references: [id])
+
+  @@index([orgId])
+  @@index([entityType, entityId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("alerts")
+}
+
+// ─── Audit Logs ──────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  orgId        String?  @map("org_id")
+  userId       String?  @map("user_id")
+  action       String
+  resourceType String   @map("resource_type")
+  resourceId   String?  @map("resource_id")
+  beforeState  Json?    @map("before_state")
+  afterState   Json?    @map("after_state")
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  org  Organization? @relation(fields: [orgId], references: [id])
+  user User?         @relation(fields: [userId], references: [id])
+
+  @@index([orgId])
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ─── Admin Settings ──────────────────────────────────────────────────────────
+
+model AdminSetting {
+  id          String   @id @default(uuid())
+  orgId       String?  @map("org_id")
+  key         String
+  value       Json
+  description String?
+  isPublic    Boolean  @default(false) @map("is_public")
+  updatedById String?  @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  org       Organization? @relation(fields: [orgId], references: [id])
+  updatedBy User?         @relation(fields: [updatedById], references: [id])
+
+  @@unique([orgId, key])
+  @@index([orgId])
+  @@map("admin_settings")
+}

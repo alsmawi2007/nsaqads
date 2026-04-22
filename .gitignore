@@ -1,0 +1,91 @@
+# ─── Dependencies ────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# ─── Build outputs ───────────────────────────────────────────────────────────
+dist/
+build/
+out/
+.next/
+.turbo/
+.nuxt/
+.svelte-kit/
+.vercel
+.nest
+
+# ─── Environment files (سرية — لا ترفع أبداً) ────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ─── Logs ────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# ─── Testing & coverage ──────────────────────────────────────────────────────
+coverage/
+*.lcov
+.nyc_output/
+junit.xml
+
+# ─── Caches ──────────────────────────────────────────────────────────────────
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+.swc/
+.tsbuildinfo
+*.tsbuildinfo
+
+# ─── IDE / editor ────────────────────────────────────────────────────────────
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ─── OS ──────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ─── Secrets & credentials ───────────────────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+*.crt
+*.cer
+*.der
+secrets/
+*.secret
+
+# ─── Prisma ──────────────────────────────────────────────────────────────────
+apps/api/prisma/*.db
+apps/api/prisma/*.db-journal
+
+# ─── Temp / misc ─────────────────────────────────────────────────────────────
+tmp/
+temp/
+*.tmp
