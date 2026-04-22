@@ -85,6 +85,9 @@ secrets/
 apps/api/prisma/*.db
 apps/api/prisma/*.db-journal
 
+# ─── Claude Code local state ─────────────────────────────────────────────────
+.claude/
+
 # ─── Temp / misc ─────────────────────────────────────────────────────────────
 tmp/
 temp/

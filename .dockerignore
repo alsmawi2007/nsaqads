@@ -1,0 +1,46 @@
+# Keep Docker build context small and exclude secrets from images.
+
+# Dependencies & build outputs
+**/node_modules
+**/dist
+**/build
+**/.next
+**/out
+**/.turbo
+**/coverage
+**/.nyc_output
+
+# Environment & secrets (never bake into images)
+**/.env
+**/.env.*
+!**/.env.example
+
+# Git & VCS
+.git
+.gitignore
+.gitattributes
+
+# Editors / OS / Claude
+.vscode
+.idea
+.claude
+.DS_Store
+**/.DS_Store
+
+# Logs
+**/*.log
+**/npm-debug.log*
+**/yarn-*.log*
+
+# Docs & misc not needed in images
+ai/
+docs/
+*.md
+!apps/api/README.md
+!apps/web/README.md
+
+# Test config not needed at runtime
+**/test/
+**/__tests__/
+**/*.spec.ts
+**/*.test.ts

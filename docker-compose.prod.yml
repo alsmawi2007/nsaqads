@@ -1,0 +1,85 @@
+# Nsaq — production stack
+# Spin up: docker compose -f docker-compose.prod.yml up -d --build
+#
+# Notes:
+# - api + web bind to 127.0.0.1 only; Nginx will reverse-proxy 80/443 later.
+# - postgres + redis are NOT exposed to the host; only reachable inside the
+#   compose network via service names (postgres, redis).
+# - DATABASE_URL and REDIS_HOST are overridden here so the api container
+#   talks to the docker service names, not to localhost inside its own container.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nsaq_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-adari}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-adari_dev_secret}
+      POSTGRES_DB: ${POSTGRES_DB:-adari_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-adari} -d ${POSTGRES_DB:-adari_dev}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nsaq_redis_prod
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-adari_redis_secret} --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "${REDIS_PASSWORD:-adari_redis_secret}" ping | grep PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: nsaq-api:latest
+    container_name: nsaq_api_prod
+    restart: unless-stopped
+    env_file: ./apps/api/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-adari}:${POSTGRES_PASSWORD:-adari_dev_secret}@postgres:5432/${POSTGRES_DB:-adari_dev}?schema=public
+      REDIS_HOST: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:3000:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "require(''http'').get(''http://localhost:3000/api/v1/health'', r => process.exit(r.statusCode === 200 ? 0 : 1)).on(''error'', () => process.exit(1))"']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3000/api/v1}
+    image: nsaq-web:latest
+    container_name: nsaq_web_prod
+    restart: unless-stopped
+    env_file: ./apps/web/.env.local
+    depends_on:
+      - api
+    ports:
+      - '127.0.0.1:3001:3001'
+
+volumes:
+  postgres_data:
+    name: nsaq_postgres_data_prod
+  redis_data:
+    name: nsaq_redis_data_prod

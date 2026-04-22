@@ -16,6 +16,7 @@ import { AdminModule } from './admin/admin.module';
 import { OptimizerModule } from './optimizer/optimizer.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     OptimizerModule,
     AlertsModule,
     DashboardModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
