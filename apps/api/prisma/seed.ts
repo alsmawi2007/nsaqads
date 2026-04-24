@@ -566,18 +566,24 @@ async function main() {
     { key: 'optimizer.default_mode',             value: 'SUGGEST_ONLY', description: 'Default optimizer mode for new campaigns' },
   ];
 
+  // Prisma cannot target a compound unique where clause with a null column,
+  // so upsert on orgId=null is unsupported. Fall back to findFirst + create
+  // to keep the seed idempotent for the global (orgId=null) row.
   for (const s of SETTINGS) {
-    await prisma.adminSetting.upsert({
-      where: { orgId_key: { orgId: null as never, key: s.key } },
-      update: {},
-      create: {
-        orgId: null,
-        key: s.key,
-        value: s.value as Prisma.InputJsonValue,
-        description: s.description,
-        isPublic: false,
-      },
+    const existing = await prisma.adminSetting.findFirst({
+      where: { orgId: null, key: s.key },
     });
+    if (!existing) {
+      await prisma.adminSetting.create({
+        data: {
+          orgId: null,
+          key: s.key,
+          value: s.value as Prisma.InputJsonValue,
+          description: s.description,
+          isPublic: false,
+        },
+      });
+    }
   }
   console.log(`  ✔ AdminSettings: ${SETTINGS.length} global defaults created`);
 
