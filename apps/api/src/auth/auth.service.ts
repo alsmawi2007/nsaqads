@@ -44,7 +44,31 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    return this.generateTokenPair(user.id, user.email, user.isSystemAdmin);
+    const memberships = await this.prisma.membership.findMany({
+      where: { userId: user.id },
+      select: {
+        role: true,
+        org: { select: { id: true, name: true, slug: true } },
+      },
+    });
+
+    const tokens = await this.generateTokenPair(user.id, user.email, user.isSystemAdmin);
+
+    return {
+      ...tokens,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        preferredLang: user.preferredLang,
+      },
+      orgs: memberships.map((m) => ({
+        id: m.org.id,
+        name: m.org.name,
+        slug: m.org.slug,
+        role: m.role,
+      })),
+    };
   }
 
   async refresh(userId: string, tokenId: string, rawRefreshToken: string) {
