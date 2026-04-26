@@ -55,6 +55,7 @@ export interface PlanItemDraft {
   bidTarget: number | null;
   audience: NormalizedAudience;
   creativeRef: CreativeRef;
+  historyExplanation?: { en: string; ar: null } | null;
 }
 
 export interface PlanDraftGeography {

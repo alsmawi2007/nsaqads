@@ -175,6 +175,91 @@ enum BudgetType {
   LIFETIME
 }
 
+// ─── Historical Learning Layer (Phase 1) ─────────────────────────────────────
+
+enum DataQuality {
+  CLEAN
+  OUTLIER_FILTERED
+  SUSPECT
+}
+
+enum SampleSizeBand {
+  HIGH
+  MEDIUM
+  LOW
+  INSUFFICIENT
+}
+
+enum FeatureConfidence {
+  HIGH
+  MEDIUM
+  LOW
+  INSUFFICIENT
+  WARM_START
+}
+
+enum FeatureRunStatus {
+  SUCCESS
+  PARTIAL
+  FAILED
+  SKIPPED
+}
+
+enum FeatureRunTrigger {
+  SCHEDULED
+  MANUAL
+  BACKFILL
+}
+
+enum OutcomeFunnelStage {
+  TOF
+  MOF
+  BOF
+  LOCAL
+}
+
+enum OutcomeAudienceType {
+  COLD_INTEREST
+  COLD_BROAD
+  LOOKALIKE
+  CUSTOM
+  RETARGETING
+  ENGAGEMENT
+  UNKNOWN
+}
+
+enum OutcomeCreativeType {
+  VERTICAL_VIDEO
+  SQUARE_VIDEO
+  HORIZONTAL_VIDEO
+  STATIC_IMAGE
+  CAROUSEL
+  COLLECTION
+  DPA
+  AR_LENS
+  STORY
+  UNKNOWN
+}
+
+enum OutcomeLanguage {
+  AR
+  EN
+  AR_EN_MIXED
+  UNKNOWN
+}
+
+enum ScoringSkippedReason {
+  LOW_SAMPLE
+  STALE
+  INSUFFICIENT_CONF
+  BAD_VALUE
+  STALE_INGESTION
+  NULL_FEATURE
+  WARM_START_INVALID
+  HLL_DISABLED
+  ORG_NOT_CANARY
+}
+
 // ─── Users & Auth ─────────────────────────────────────────────────────────────
 
 model User {
@@ -229,18 +314,22 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  memberships      Membership[]
-  adAccounts       AdAccount[]
-  campaigns        Campaign[]
-  adSets           AdSet[]
-  metricSnapshots  MetricSnapshot[]
-  optimizerRules   OptimizerRule[]
-  optimizerActions OptimizerAction[]
-  cooldownTrackers CooldownTracker[]
-  alerts           Alert[]
-  auditLogs        AuditLog[]
-  adminSettings    AdminSetting[]
-  campaignPlans    CampaignPlan[]
+  memberships               Membership[]
+  adAccounts                AdAccount[]
+  campaigns                 Campaign[]
+  adSets                    AdSet[]
+  metricSnapshots           MetricSnapshot[]
+  optimizerRules            OptimizerRule[]
+  optimizerActions          OptimizerAction[]
+  cooldownTrackers          CooldownTracker[]
+  alerts                    Alert[]
+  auditLogs                 AuditLog[]
+  adminSettings             AdminSetting[]
+  campaignPlans             CampaignPlan[]
+  campaignOutcomes          CampaignOutcome[]
+  orgFeatures               OrgFeature[]
+  featureComputeRuns        FeatureComputeRun[]
+  platformScoringDecisions  PlatformScoringDecision[]
 
   @@map("organizations")
 }
@@ -388,6 +477,7 @@ model MetricSnapshot {
   frequency    Decimal  @default(0) @db.Decimal(8, 4)
   spendPacing  Decimal  @default(0) @map("spend_pacing") @db.Decimal(8, 4)
   rawPayload   Json?    @map("raw_payload")
+  dataQuality  DataQuality @default(CLEAN) @map("data_quality")
   createdAt    DateTime @default(now()) @map("created_at")
 
   org Organization @relation(fields: [orgId], references: [id])
@@ -588,11 +678,12 @@ model CampaignPlan {
   createdAt            DateTime           @default(now()) @map("created_at")
   updatedAt            DateTime           @updatedAt @map("updated_at")
 
-  org        Organization       @relation(fields: [orgId], references: [id])
-  createdBy  User               @relation("CreatedPlans", fields: [createdById], references: [id])
-  approvedBy User?              @relation("ApprovedPlans", fields: [approvedById], references: [id])
-  items      CampaignPlanItem[]
-  campaigns  Campaign[]
+  org              Organization              @relation(fields: [orgId], references: [id])
+  createdBy        User                      @relation("CreatedPlans", fields: [createdById], references: [id])
+  approvedBy       User?                     @relation("ApprovedPlans", fields: [approvedById], references: [id])
+  items            CampaignPlanItem[]
+  campaigns        Campaign[]
+  scoringDecisions PlatformScoringDecision[]
 
   @@index([orgId])
   @@index([status])
@@ -617,6 +708,7 @@ model CampaignPlanItem {
   externalAdsetIds   Json?                        @map("external_adset_ids")
   errorMessage       String?                      @map("error_message")
   launchedAt         DateTime?                    @map("launched_at")
+  historyExplanation Json?                        @map("history_explanation")
   createdAt          DateTime                     @default(now()) @map("created_at")
   updatedAt          DateTime                     @updatedAt @map("updated_at")
 
@@ -628,4 +720,134 @@ model CampaignPlanItem {
   @@index([planId])
   @@index([launchStatus])
   @@map("campaign_plan_items")
+}
+
+// ─── Historical Learning Layer — Tables ──────────────────────────────────────
+
+// Aggregated, immutable post-flight truth for each completed campaign.
+// Source for feature computation. Never updated after sealing.
+model CampaignOutcome {
+  id              String                @id @default(uuid())
+  orgId           String                @map("org_id")
+  campaignPlanId  String?               @map("campaign_plan_id")
+  campaignId      String?               @map("campaign_id")
+  platform        Platform
+  goal            CampaignGoal
+  funnelStage     OutcomeFunnelStage    @map("funnel_stage")
+  audienceType    OutcomeAudienceType   @default(UNKNOWN) @map("audience_type")
+  creativeType    OutcomeCreativeType   @default(UNKNOWN) @map("creative_type")
+  language        OutcomeLanguage       @default(UNKNOWN)
+  vertical        String?
+  geoCountry      String?               @map("geo_country")
+  geoRegion       String?               @map("geo_region")
+  startedAt       DateTime              @map("started_at")
+  endedAt         DateTime              @map("ended_at")
+  durationDays    Int                   @map("duration_days")
+  spend           Decimal               @default(0) @db.Decimal(15, 4)
+  impressions     BigInt                @default(0)
+  clicks          BigInt                @default(0)
+  conversions     BigInt                @default(0)
+  revenue         Decimal               @default(0) @db.Decimal(15, 4)
+  ctr             Decimal               @default(0) @db.Decimal(10, 6)
+  cpc             Decimal               @default(0) @db.Decimal(15, 4)
+  cpa             Decimal               @default(0) @db.Decimal(15, 4)
+  roas            Decimal               @default(0) @db.Decimal(10, 4)
+  cpm             Decimal               @default(0) @db.Decimal(15, 4)
+  dataQuality     DataQuality           @default(CLEAN) @map("data_quality")
+  outlierFlags    Json                  @default("[]") @map("outlier_flags")
+  sealedAt        DateTime              @default(now()) @map("sealed_at")
+  createdAt       DateTime              @default(now()) @map("created_at")
+
+  org Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, platform, endedAt])
+  @@index([orgId, vertical, geoCountry, platform])
+  @@index([campaignPlanId])
+  @@index([endedAt])
+  @@map("campaign_outcomes")
+}
+
+// Computed historical performance features per (org, feature, dimensions, window, version).
+// orgId nullable — NULL rows are global priors used by warm-start blending.
+model OrgFeature {
+  id              String            @id @default(uuid())
+  orgId           String?           @map("org_id")
+  featureName     String            @map("feature_name")
+  featureVersion  Int               @default(1) @map("feature_version")
+  dimensions      Json              @default("{}")
+  dimensionsKey   String            @map("dimensions_key")
+  windowDays      Int               @map("window_days")
+  value           Decimal?          @db.Decimal(15, 6)
+  numerator       Decimal?          @db.Decimal(20, 6)
+  denominator     Decimal?          @db.Decimal(20, 6)
+  sampleSize      Int               @default(0) @map("sample_size")
+  sampleBand      SampleSizeBand    @default(INSUFFICIENT) @map("sample_band")
+  confidence      FeatureConfidence @default(INSUFFICIENT)
+  isWarmStart     Boolean           @default(false) @map("is_warm_start")
+  isStale         Boolean           @default(false) @map("is_stale")
+  computedAt      DateTime          @default(now()) @map("computed_at")
+  computedFromRunId String?         @map("computed_from_run_id")
+  metadata        Json?
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  org Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@unique([orgId, featureName, dimensionsKey, windowDays, featureVersion])
+  @@index([orgId, featureName, windowDays, computedAt])
+  @@index([isStale, computedAt])
+  @@index([featureName, featureVersion])
+  @@map("org_features")
+}
+
+// Audit trail of each feature compute run (BullMQ worker).
+model FeatureComputeRun {
+  id            String              @id @default(uuid())
+  orgId         String?             @map("org_id")
+  trigger       FeatureRunTrigger   @default(SCHEDULED)
+  status        FeatureRunStatus    @default(SUCCESS)
+  startedAt     DateTime            @default(now()) @map("started_at")
+  finishedAt    DateTime?           @map("finished_at")
+  durationMs    Int?                @map("duration_ms")
+  featuresWritten Int               @default(0) @map("features_written")
+  featuresSkipped Int               @default(0) @map("features_skipped")
+  errorMessage  String?             @map("error_message")
+  context       Json?
+
+  org Organization? @relation(fields: [orgId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, startedAt(sort: Desc)])
+  @@index([status, startedAt])
+  @@map("feature_compute_runs")
+}
+
+// Per-platform scoring decision audit row written during DecisionEngine.build().
+// One row per (plan_synthesis_run, platform). Shows whether HLL multiplier was applied or skipped.
+model PlatformScoringDecision {
+  id                 String                @id @default(uuid())
+  orgId              String                @map("org_id")
+  campaignPlanId     String?               @map("campaign_plan_id")
+  planSynthesisRunId String                @map("plan_synthesis_run_id")
+  platform           Platform
+  goal               CampaignGoal
+  funnelStage        FunnelStage           @map("funnel_stage")
+  baseFitness        Decimal               @map("base_fitness") @db.Decimal(10, 6)
+  multiplier         Decimal?              @db.Decimal(10, 6)
+  multiplierClamped  Boolean               @default(false) @map("multiplier_clamped")
+  finalScore         Decimal               @map("final_score") @db.Decimal(10, 6)
+  hllApplied         Boolean               @default(false) @map("hll_applied")
+  skippedReason      ScoringSkippedReason? @map("skipped_reason")
+  featuresUsed       Json                  @default("[]") @map("features_used")
+  confidenceSummary  Json?                 @map("confidence_summary")
+  explanation        Json?
+  decidedAt          DateTime              @default(now()) @map("decided_at")
+
+  org  Organization  @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  plan CampaignPlan? @relation(fields: [campaignPlanId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, decidedAt(sort: Desc)])
+  @@index([campaignPlanId])
+  @@index([planSynthesisRunId])
+  @@index([platform, decidedAt])
+  @@map("platform_scoring_decisions")
 }

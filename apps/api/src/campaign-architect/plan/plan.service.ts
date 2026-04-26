@@ -14,6 +14,7 @@ import {
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuditService } from '../../audit/audit.service';
+import { HllPlanAdjusterService } from '../../historical-learning/scoring/plan-adjuster.service';
 import { DecisionEngineService } from '../decision/decision-engine.service';
 import { RiskCheckService } from '../risk/risk-check.service';
 import { StrategicSummaryService } from '../summary/strategic-summary.service';
@@ -44,6 +45,7 @@ export class PlanService {
     private engine: DecisionEngineService,
     private risk: RiskCheckService,
     private summary: StrategicSummaryService,
+    private hllAdjuster: HllPlanAdjusterService,
   ) {}
 
   async createPlan(
@@ -54,7 +56,8 @@ export class PlanService {
     await this.warnIfDuplicateSubmission(orgId, userId, input);
 
     const ctx = await this.buildContext(orgId, input);
-    const draft = this.engine.build(ctx);
+    const baseDraft = this.engine.build(ctx);
+    const draft = await this.hllAdjuster.adjust(orgId, baseDraft);
     const risks = this.risk.evaluate(draft, ctx);
     const summary = this.summary.build(draft);
 
@@ -150,7 +153,8 @@ export class PlanService {
 
     const input = existing.wizardAnswers as unknown as WizardInputDto;
     const ctx = await this.buildContext(orgId, input);
-    const draft = this.engine.build(ctx);
+    const baseDraft = this.engine.build(ctx);
+    const draft = await this.hllAdjuster.adjust(orgId, baseDraft, planId);
     const risks = this.risk.evaluate(draft, ctx);
     const summary = this.summary.build(draft);
 
@@ -333,6 +337,9 @@ export class PlanService {
       audience: item.audience as unknown as Prisma.InputJsonValue,
       creativeRef: item.creativeRef as unknown as Prisma.InputJsonValue,
       launchStatus: CampaignPlanItemLaunchStatus.PENDING,
+      historyExplanation: item.historyExplanation
+        ? (item.historyExplanation as unknown as Prisma.InputJsonValue)
+        : Prisma.JsonNull,
     };
   }
 

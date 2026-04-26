@@ -18,6 +18,7 @@ import { AlertsModule } from './alerts/alerts.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
 import { CampaignArchitectModule } from './campaign-architect/campaign-architect.module';
+import { HistoricalLearningModule } from './historical-learning/historical-learning.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { CampaignArchitectModule } from './campaign-architect/campaign-architect
     AlertsModule,
     DashboardModule,
     HealthModule,
+    HistoricalLearningModule,
     CampaignArchitectModule,
   ],
 })

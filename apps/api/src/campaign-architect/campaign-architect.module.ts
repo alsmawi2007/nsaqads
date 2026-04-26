@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ProvidersModule } from '../providers/providers.module';
+import { HistoricalLearningModule } from '../historical-learning/historical-learning.module';
 import { CampaignArchitectController } from './campaign-architect.controller';
 import { DecisionEngineService } from './decision/decision-engine.service';
 import { RiskCheckService } from './risk/risk-check.service';
@@ -8,7 +9,7 @@ import { PlanService } from './plan/plan.service';
 import { LauncherService } from './launcher/launcher.service';
 
 @Module({
-  imports: [ProvidersModule],
+  imports: [ProvidersModule, HistoricalLearningModule],
   controllers: [CampaignArchitectController],
   providers: [
     DecisionEngineService,
