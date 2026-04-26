@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import * as crypto from 'crypto';
 import {
   IAdProvider,
   NormalizedCampaign,
@@ -10,6 +11,10 @@ import {
   ProviderActionResult,
   BiddingStrategy,
   Platform,
+  NormalizedCampaignDraft,
+  NormalizedAdSetDraft,
+  CreativeDraft,
+  NormalizedAdDraft,
 } from '../interfaces/ad-provider.interface';
 
 // MockProvider satisfies IAdProvider for all platforms in development.
@@ -136,5 +141,102 @@ export class MockProvider implements IAdProvider {
         newBidCeiling: params.newBidCeiling,
       },
     };
+  }
+
+  // ─── Creation (Campaign Architect) ───────────────────────────────────────
+  // Synthetic IDs are a deterministic hash of the inputs so the same draft
+  // produces the same external id on retry — this lets the Launcher use
+  // externalCampaignId as an idempotency key without extra bookkeeping.
+
+  async createCampaign(
+    adAccountId: string,
+    draft: NormalizedCampaignDraft,
+  ): Promise<ProviderActionResult> {
+    const externalId = this.deterministicId('campaign', [
+      this.platform,
+      adAccountId,
+      draft.name,
+      draft.objective,
+      String(draft.isCbo),
+    ]);
+    return {
+      success: true,
+      externalId,
+      platform: this.platform,
+      appliedAt: new Date().toISOString(),
+      errorCode: null,
+      errorMessage: null,
+      providerResponse: { mock: true, created: 'campaign', draft },
+    };
+  }
+
+  async createAdSet(
+    adAccountId: string,
+    draft: NormalizedAdSetDraft,
+  ): Promise<ProviderActionResult> {
+    const externalId = this.deterministicId('adset', [
+      this.platform,
+      adAccountId,
+      draft.campaignExternalId,
+      draft.name,
+      draft.biddingStrategy,
+    ]);
+    return {
+      success: true,
+      externalId,
+      platform: this.platform,
+      appliedAt: new Date().toISOString(),
+      errorCode: null,
+      errorMessage: null,
+      providerResponse: { mock: true, created: 'adset', draft },
+    };
+  }
+
+  async uploadCreative(
+    adAccountId: string,
+    draft: CreativeDraft,
+  ): Promise<ProviderActionResult> {
+    const externalId = this.deterministicId('creative', [
+      this.platform,
+      adAccountId,
+      draft.name,
+      ...draft.assetRefs,
+    ]);
+    return {
+      success: true,
+      externalId,
+      platform: this.platform,
+      appliedAt: new Date().toISOString(),
+      errorCode: null,
+      errorMessage: null,
+      providerResponse: { mock: true, created: 'creative', draft },
+    };
+  }
+
+  async createAd(
+    adAccountId: string,
+    draft: NormalizedAdDraft,
+  ): Promise<ProviderActionResult> {
+    const externalId = this.deterministicId('ad', [
+      this.platform,
+      adAccountId,
+      draft.adSetExternalId,
+      draft.creativeExternalId,
+      draft.name,
+    ]);
+    return {
+      success: true,
+      externalId,
+      platform: this.platform,
+      appliedAt: new Date().toISOString(),
+      errorCode: null,
+      errorMessage: null,
+      providerResponse: { mock: true, created: 'ad', draft },
+    };
+  }
+
+  private deterministicId(kind: string, parts: string[]): string {
+    const hash = crypto.createHash('sha256').update(parts.join('|')).digest('hex').slice(0, 12);
+    return `mock-${kind}-${hash}`;
   }
 }

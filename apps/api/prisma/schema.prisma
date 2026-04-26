@@ -138,28 +138,67 @@ enum SettingValueType {
   JSON
 }
 
+enum CampaignPlanStatus {
+  DRAFT
+  APPROVED
+  LAUNCHING
+  LAUNCHED
+  FAILED
+  ARCHIVED
+}
+
+enum CampaignPlanItemLaunchStatus {
+  PENDING
+  CREATING
+  CREATED
+  FAILED
+  SKIPPED
+}
+
+enum CampaignGoal {
+  AWARENESS
+  TRAFFIC
+  ENGAGEMENT
+  LEADS
+  SALES
+  APP_INSTALLS
+}
+
+enum FunnelStage {
+  TOFU
+  MOFU
+  BOFU
+}
+
+enum BudgetType {
+  DAILY
+  LIFETIME
+}
+
 // ─── Users & Auth ─────────────────────────────────────────────────────────────
 
 model User {
-  id            String         @id @default(uuid())
-  email         String         @unique
-  passwordHash  String         @map("password_hash")
+  id            String        @id @default(uuid())
+  email         String        @unique
+  passwordHash  String        @map("password_hash")
   name          String?
-  avatarUrl     String?        @map("avatar_url")
-  preferredLang PreferredLang  @default(en) @map("preferred_lang")
-  isSystemAdmin Boolean        @default(false) @map("is_system_admin")
-  isActive      Boolean        @default(true) @map("is_active")
-  lastLoginAt   DateTime?      @map("last_login_at")
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  avatarUrl     String?       @map("avatar_url")
+  preferredLang PreferredLang @default(en) @map("preferred_lang")
+  isSystemAdmin Boolean       @default(false) @map("is_system_admin")
+  isActive      Boolean       @default(true) @map("is_active")
+  lastLoginAt   DateTime?     @map("last_login_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
   refreshTokens        RefreshToken[]
   memberships          Membership[]
-  invitedMemberships   Membership[]         @relation("InvitedBy")
+  invitedMemberships   Membership[]      @relation("InvitedBy")
   optimizerActions     OptimizerAction[]
   resolvedAlerts       Alert[]
   auditLogs            AuditLog[]
   updatedAdminSettings AdminSetting[]
+  createdPlans         CampaignPlan[]    @relation("CreatedPlans")
+  approvedPlans        CampaignPlan[]    @relation("ApprovedPlans")
 
   @@map("users")
 }
@@ -201,19 +240,20 @@ model Organization {
   alerts           Alert[]
   auditLogs        AuditLog[]
   adminSettings    AdminSetting[]
+  campaignPlans    CampaignPlan[]
 
   @@map("organizations")
 }
 
 model Membership {
-  id         String     @id @default(uuid())
-  orgId      String     @map("org_id")
-  userId     String     @map("user_id")
-  role       MemberRole
-  invitedById String?   @map("invited_by")
-  joinedAt   DateTime?  @map("joined_at")
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
+  id          String     @id @default(uuid())
+  orgId       String     @map("org_id")
+  userId      String     @map("user_id")
+  role        MemberRole
+  invitedById String?    @map("invited_by")
+  joinedAt    DateTime?  @map("joined_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
 
   org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -245,8 +285,9 @@ model AdAccount {
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
-  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  org       Organization       @relation(fields: [orgId], references: [id], onDelete: Cascade)
   campaigns Campaign[]
+  planItems CampaignPlanItem[]
 
   @@unique([orgId, platform, externalId])
   @@index([orgId])
@@ -274,17 +315,20 @@ model Campaign {
   phaseUpdatedAt   DateTime?     @map("phase_updated_at")
   optimizerEnabled Boolean       @default(true) @map("optimizer_enabled")
   syncedAt         DateTime?     @map("synced_at")
+  sourcePlanId     String?       @map("source_plan_id")
   deletedAt        DateTime?     @map("deleted_at")
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  org       Organization @relation(fields: [orgId], references: [id])
-  adAccount AdAccount    @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
-  adSets    AdSet[]
+  org        Organization  @relation(fields: [orgId], references: [id])
+  adAccount  AdAccount     @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+  sourcePlan CampaignPlan? @relation(fields: [sourcePlanId], references: [id])
+  adSets     AdSet[]
 
   @@unique([adAccountId, externalId])
   @@index([orgId])
   @@index([adAccountId])
+  @@index([sourcePlanId])
   @@map("campaigns")
 }
 
@@ -305,16 +349,19 @@ model AdSet {
   optimizerMode    OptimizerMode @default(SUGGEST_ONLY) @map("optimizer_mode")
   optimizerEnabled Boolean       @default(true) @map("optimizer_enabled")
   syncedAt         DateTime?     @map("synced_at")
+  sourcePlanItemId String?       @map("source_plan_item_id")
   deletedAt        DateTime?     @map("deleted_at")
   createdAt        DateTime      @default(now()) @map("created_at")
   updatedAt        DateTime      @updatedAt @map("updated_at")
 
-  org      Organization @relation(fields: [orgId], references: [id])
-  campaign Campaign     @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  org            Organization      @relation(fields: [orgId], references: [id])
+  campaign       Campaign          @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sourcePlanItem CampaignPlanItem? @relation(fields: [sourcePlanItemId], references: [id])
 
   @@unique([campaignId, externalId])
   @@index([orgId])
   @@index([campaignId])
+  @@index([sourcePlanItemId])
   @@map("ad_sets")
 }
 
@@ -376,7 +423,7 @@ model OptimizerRule {
   createdAt            DateTime       @default(now()) @map("created_at")
   updatedAt            DateTime       @updatedAt @map("updated_at")
 
-  org             Organization?     @relation(fields: [orgId], references: [id])
+  org              Organization?     @relation(fields: [orgId], references: [id])
   optimizerActions OptimizerAction[]
 
   @@index([orgId])
@@ -403,10 +450,10 @@ model OptimizerAction {
   triggeredBy       TriggeredBy  @default(SCHEDULER) @map("triggered_by")
   triggeredByUserId String?      @map("triggered_by_user_id")
   evaluationContext Json?        @map("evaluation_context")
-  explanation       Json         // { "en": "...", "ar": null }
+  explanation       Json // { "en": "...", "ar": null }
   createdAt         DateTime     @default(now()) @map("created_at")
 
-  org             Organization  @relation(fields: [orgId], references: [id])
+  org             Organization   @relation(fields: [orgId], references: [id])
   rule            OptimizerRule? @relation(fields: [ruleId], references: [id])
   triggeredByUser User?          @relation(fields: [triggeredByUserId], references: [id])
 
@@ -510,4 +557,75 @@ model AdminSetting {
   @@unique([orgId, key])
   @@index([orgId])
   @@map("admin_settings")
+}
+
+// ─── Campaign Architect ──────────────────────────────────────────────────────
+
+model CampaignPlan {
+  id                   String             @id @default(uuid())
+  orgId                String             @map("org_id")
+  createdById          String             @map("created_by")
+  status               CampaignPlanStatus @default(DRAFT)
+  goal                 CampaignGoal
+  funnelStage          FunnelStage        @map("funnel_stage")
+  totalBudget          Decimal            @map("total_budget") @db.Decimal(15, 4)
+  budgetType           BudgetType         @map("budget_type")
+  currency             String             @default("USD")
+  startDate            DateTime           @map("start_date") @db.Date
+  endDate              DateTime?          @map("end_date") @db.Date
+  geography            Json
+  audienceHints        Json?              @map("audience_hints")
+  creativeBrief        Json               @map("creative_brief")
+  wizardAnswers        Json               @map("wizard_answers")
+  reasoning            Json
+  summary              Json
+  risks                Json               @default("[]")
+  warningsAcknowledged Boolean            @default(false) @map("warnings_acknowledged")
+  approvedById         String?            @map("approved_by")
+  approvedAt           DateTime?          @map("approved_at")
+  launchedAt           DateTime?          @map("launched_at")
+  deletedAt            DateTime?          @map("deleted_at")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  org        Organization       @relation(fields: [orgId], references: [id])
+  createdBy  User               @relation("CreatedPlans", fields: [createdById], references: [id])
+  approvedBy User?              @relation("ApprovedPlans", fields: [approvedById], references: [id])
+  items      CampaignPlanItem[]
+  campaigns  Campaign[]
+
+  @@index([orgId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("campaign_plans")
+}
+
+model CampaignPlanItem {
+  id                 String                       @id @default(uuid())
+  planId             String                       @map("plan_id")
+  platform           Platform
+  adAccountId        String                       @map("ad_account_id")
+  objective          String
+  dailyBudget        Decimal                      @map("daily_budget") @db.Decimal(15, 4)
+  isCbo              Boolean                      @default(false) @map("is_cbo")
+  biddingStrategy    String                       @map("bidding_strategy")
+  bidTarget          Decimal?                     @map("bid_target") @db.Decimal(15, 4)
+  audience           Json
+  creativeRef        Json                         @map("creative_ref")
+  launchStatus       CampaignPlanItemLaunchStatus @default(PENDING) @map("launch_status")
+  externalCampaignId String?                      @map("external_campaign_id")
+  externalAdsetIds   Json?                        @map("external_adset_ids")
+  errorMessage       String?                      @map("error_message")
+  launchedAt         DateTime?                    @map("launched_at")
+  createdAt          DateTime                     @default(now()) @map("created_at")
+  updatedAt          DateTime                     @updatedAt @map("updated_at")
+
+  plan      CampaignPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  adAccount AdAccount    @relation(fields: [adAccountId], references: [id])
+  adSets    AdSet[]
+
+  @@unique([planId, platform])
+  @@index([planId])
+  @@index([launchStatus])
+  @@map("campaign_plan_items")
 }

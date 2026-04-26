@@ -48,6 +48,7 @@ async function bootstrap(): Promise<void> {
     .addTag('Ad Accounts', 'Provider ad account connections')
     .addTag('Campaigns', 'Campaign and ad set management')
     .addTag('Optimizer', 'Optimizer rules, actions, and cycle management')
+    .addTag('Campaign Architect', 'Wizard-driven campaign plan creation, approval, and launch')
     .addTag('Alerts', 'Alert management')
     .addTag('Admin', 'System admin settings and controls')
     .build();

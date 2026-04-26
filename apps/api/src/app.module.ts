@@ -17,6 +17,7 @@ import { OptimizerModule } from './optimizer/optimizer.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
+import { CampaignArchitectModule } from './campaign-architect/campaign-architect.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { HealthModule } from './health/health.module';
     AlertsModule,
     DashboardModule,
     HealthModule,
+    CampaignArchitectModule,
   ],
 })
 export class AppModule {}

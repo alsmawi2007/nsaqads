@@ -92,6 +92,62 @@ export interface ProviderActionResult {
   providerResponse: unknown;        // Raw response stored for debugging
 }
 
+// ─── Draft Input Contracts (Campaign Architect: creation path) ───────────────
+// Drafts carry only the fields needed to CREATE an entity. The externalId is
+// assigned by the provider and returned in ProviderActionResult.externalId.
+
+export interface NormalizedAudience {
+  countries:     string[];                                      // ISO-3166-1 alpha-2
+  cities:        string[] | null;
+  radiusKm:      number | null;
+  ageMin:        number;
+  ageMax:        number;
+  genders:       ('MALE' | 'FEMALE' | 'ALL')[];
+  languages:     string[] | null;
+  interestTags:  string[] | null;
+}
+
+export interface NormalizedCampaignDraft {
+  name:           string;
+  objective:      string;                      // normalized objective; provider maps to platform value
+  status:         EntityStatus;                // typically ACTIVE or PAUSED at create time
+  dailyBudget:    number | null;               // set if isCbo=true and budget is daily
+  lifetimeBudget: number | null;               // set if isCbo=true and budget is lifetime
+  isCbo:          boolean;
+  startDate:      string | null;               // ISO date YYYY-MM-DD
+  endDate:        string | null;
+}
+
+export interface NormalizedAdSetDraft {
+  campaignExternalId: string;                  // from createCampaign result
+  name:               string;
+  status:             EntityStatus;
+  dailyBudget:        number | null;           // required when parent campaign isCbo=false
+  biddingStrategy:    BiddingStrategy;
+  bidAmount:          number | null;           // required for COST_CAP/BID_CAP; null otherwise
+  bidFloor:           number | null;
+  bidCeiling:         number | null;
+  audience:           NormalizedAudience;
+  startDate:          string | null;
+  endDate:            string | null;
+}
+
+export interface CreativeDraft {
+  name:          string;
+  assetRefs:     string[];                     // pre-existing asset identifiers (≥ 1 required)
+  headline:      string | null;
+  description:   string | null;
+  cta:           string | null;
+  landingUrl:    string | null;
+}
+
+export interface NormalizedAdDraft {
+  adSetExternalId:    string;                  // from createAdSet result
+  creativeExternalId: string;                  // from uploadCreative result
+  name:               string;
+  status:             EntityStatus;
+}
+
 // ─── Provider Interface ───────────────────────────────────────────────────────
 
 export interface IAdProvider {
@@ -117,5 +173,23 @@ export interface IAdProvider {
   updateBidLimits(
     adAccountId: string,
     params: UpdateBidLimitsParams,
+  ): Promise<ProviderActionResult>;
+
+  // ─── Creation (Campaign Architect) ────────────────────────────────────────
+  createCampaign(
+    adAccountId: string,
+    draft: NormalizedCampaignDraft,
+  ): Promise<ProviderActionResult>;
+  createAdSet(
+    adAccountId: string,
+    draft: NormalizedAdSetDraft,
+  ): Promise<ProviderActionResult>;
+  uploadCreative(
+    adAccountId: string,
+    draft: CreativeDraft,
+  ): Promise<ProviderActionResult>;
+  createAd(
+    adAccountId: string,
+    draft: NormalizedAdDraft,
   ): Promise<ProviderActionResult>;
 }
