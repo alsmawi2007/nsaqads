@@ -8,7 +8,8 @@
   "scripts": {
     "api:dev": "npm run dev --workspace=apps/api",
     "api:build": "npm run build --workspace=apps/api",
-    "api:test": "npm run test --workspace=apps/api"
+    "api:test": "npm run test --workspace=apps/api",
+    "lint:naming": "bash scripts/check-naming.sh"
   },
   "engines": {
     "node": ">=20.0.0"

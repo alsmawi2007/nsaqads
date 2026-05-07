@@ -442,7 +442,7 @@
     "launch_page_title": "Launch plan",
     "launch_page_subtitle": "We'll provision your campaign across the selected platforms.",
     "launch_paused_note_title": "Everything is created as PAUSED",
-    "launch_paused_note_desc": "Adari does not start ad delivery for you. After provisioning succeeds, switch each campaign on inside the platform when you're ready.",
+    "launch_paused_note_desc": "Nasaq Ads does not start ad delivery for you. After provisioning succeeds, switch each campaign on inside the platform when you're ready.",
     "launch_running_title": "Provisioning your campaign…",
     "launch_running_desc": "We're creating the campaign, ad set, creative and ad on each platform. This may take a moment.",
     "launch_button": "Start launch",

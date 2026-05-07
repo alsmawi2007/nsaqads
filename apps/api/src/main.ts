@@ -6,6 +6,7 @@ import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { AuditContextInterceptor } from './common/interceptors/audit-log.interceptor';
+import { NamingLeakInterceptor } from './common/interceptors/naming-leak.interceptor';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
@@ -35,12 +36,13 @@ async function bootstrap(): Promise<void> {
   app.useGlobalInterceptors(
     new ClassSerializerInterceptor(app.get(Reflector)),
     new AuditContextInterceptor(),
+    new NamingLeakInterceptor(),
   );
 
   // Swagger — R8: first-class deliverable
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('Nsaq API')
-    .setDescription('Nsaq AdTech Platform — Phase 1 Backend API')
+    .setTitle('Nasaq Ads API')
+    .setDescription('نسق ادز (Nasaq Ads) — AdTech Platform — Phase 1 Backend API')
     .setVersion('1.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' })
     .addTag('Auth', 'Authentication and session management')

@@ -14,7 +14,7 @@ export class PlanItemResponseDto {
   @ApiProperty({ enum: Platform })
   platform: Platform;
 
-  @ApiProperty({ description: 'Adari internal AdAccount UUID.' })
+  @ApiProperty({ description: 'Nasaq Ads internal AdAccount UUID.' })
   adAccountId: string;
 
   @ApiProperty({ example: 'CONVERSIONS' })

@@ -485,15 +485,15 @@ export class LauncherService {
   // ─── Naming helpers ──────────────────────────────────────────────────────
 
   private campaignName(plan: CampaignPlan, item: CampaignPlanItem): string {
-    return `Adari ${plan.goal} ${item.platform} ${plan.id.slice(0, 8)}`;
+    return `Nasaq Ads ${plan.goal} ${item.platform} ${plan.id.slice(0, 8)}`;
   }
 
   private adSetName(plan: CampaignPlan, item: CampaignPlanItem): string {
-    return `Adari ${plan.goal} ${item.platform} adset ${plan.id.slice(0, 8)}`;
+    return `Nasaq Ads ${plan.goal} ${item.platform} adset ${plan.id.slice(0, 8)}`;
   }
 
   private adName(plan: CampaignPlan, item: CampaignPlanItem): string {
-    return `Adari ${plan.goal} ${item.platform} ad ${plan.id.slice(0, 8)}`;
+    return `Nasaq Ads ${plan.goal} ${item.platform} ad ${plan.id.slice(0, 8)}`;
   }
 
   // ─── Internals ───────────────────────────────────────────────────────────
