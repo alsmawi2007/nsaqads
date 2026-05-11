@@ -26,6 +26,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 #     naming note.
 #   - scripts/check-naming.sh (this file): mentions the banned name in
 #     comments and patterns by design.
+#   - apps/api/src/common/interceptors/naming-leak.interceptor{,.spec}.ts:
+#     the runtime guard against the legacy name leaking through HTTP
+#     responses; the regex and assertion fixtures must hardcode 'Adari'.
 EXCLUDE_PATHS=(
   ':!node_modules'
   ':!**/node_modules'
@@ -41,6 +44,8 @@ EXCLUDE_PATHS=(
   ':!apps/web/src/lib/stores/ui.store.ts'
   ':!apps/web/src/features/campaign-architect/store/wizard.store.ts'
   ':!apps/api/docs/RELEASE.md'
+  ':!apps/api/src/common/interceptors/naming-leak.interceptor.ts'
+  ':!apps/api/src/common/interceptors/naming-leak.interceptor.spec.ts'
   ':!scripts/check-naming.sh'
 )
 
