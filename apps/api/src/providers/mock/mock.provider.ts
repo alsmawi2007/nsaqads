@@ -15,24 +15,42 @@ import {
   NormalizedAdSetDraft,
   CreativeDraft,
   NormalizedAdDraft,
+  AdAccountRef,
+  ProviderCapabilities,
 } from '../interfaces/ad-provider.interface';
 
 // MockProvider satisfies IAdProvider for all platforms in development.
-// ProviderFactory selects this when NODE_ENV=development or adAccount.status=MOCK.
+// ProviderFactory selects this when adAccount.status=MOCK or when a real
+// adapter has not yet been built for the platform.
 @Injectable()
 export class MockProvider implements IAdProvider {
   readonly platform: Platform = 'META'; // overridden by factory at runtime
 
-  async validateCredentials(_adAccountId: string): Promise<boolean> {
+  getCapabilities(): ProviderCapabilities {
+    // Mock supports everything — used to test optimizer logic against the
+    // most permissive surface. Real providers report narrower capabilities.
+    return {
+      supportsCbo:              true,
+      supportsLifetimeBudget:   true,
+      supportsBidFloor:         true,
+      supportsBidCeiling:       true,
+      supportsRoasGoal:         true,
+      supportsCpaGoal:          true,
+      supportsCampaignCreation: true,
+      supportsCreativeUpload:   true,
+    };
+  }
+
+  async validateCredentials(_account: AdAccountRef): Promise<boolean> {
     return true;
   }
 
-  async refreshAccessToken(_adAccountId: string): Promise<void> {}
+  async refreshAccessToken(_account: AdAccountRef): Promise<void> {}
 
-  async fetchCampaigns(adAccountId: string): Promise<NormalizedCampaign[]> {
+  async fetchCampaigns(account: AdAccountRef): Promise<NormalizedCampaign[]> {
     return [
       {
-        externalId: `mock-campaign-${adAccountId}-1`,
+        externalId: `mock-campaign-${account.externalId}-1`,
         name: 'Mock Campaign — Conversions',
         status: 'ACTIVE',
         objective: 'CONVERSIONS',
@@ -45,10 +63,10 @@ export class MockProvider implements IAdProvider {
     ];
   }
 
-  async fetchAdSets(adAccountId: string, campaignExternalId: string): Promise<NormalizedAdSet[]> {
+  async fetchAdSets(account: AdAccountRef, campaignExternalId: string): Promise<NormalizedAdSet[]> {
     return [
       {
-        externalId: `mock-adset-${adAccountId}-1`,
+        externalId: `mock-adset-${account.externalId}-1`,
         campaignExternalId,
         name: 'Mock Ad Set — Broad Audience',
         status: 'ACTIVE',
@@ -62,12 +80,12 @@ export class MockProvider implements IAdProvider {
   }
 
   async fetchMetrics(
-    _adAccountId: string,
+    _account: AdAccountRef,
     entityType: 'CAMPAIGN' | 'AD_SET',
     externalId: string,
     windowHours: 24 | 48 | 72,
   ): Promise<NormalizedMetrics> {
-    const spend = windowHours * 20; // ~SAR 480 / 72h
+    const spend = windowHours * 20;
     const impressions = windowHours * 1000;
     const clicks = Math.floor(impressions * 0.025);
     const conversions = Math.floor(clicks * 0.05);
@@ -95,7 +113,7 @@ export class MockProvider implements IAdProvider {
   }
 
   async updateBudget(
-    _adAccountId: string,
+    _account: AdAccountRef,
     params: UpdateBudgetParams,
   ): Promise<ProviderActionResult> {
     return {
@@ -110,7 +128,7 @@ export class MockProvider implements IAdProvider {
   }
 
   async updateBiddingStrategy(
-    _adAccountId: string,
+    _account: AdAccountRef,
     params: UpdateBiddingStrategyParams,
   ): Promise<ProviderActionResult> {
     return {
@@ -125,7 +143,7 @@ export class MockProvider implements IAdProvider {
   }
 
   async updateBidLimits(
-    _adAccountId: string,
+    _account: AdAccountRef,
     params: UpdateBidLimitsParams,
   ): Promise<ProviderActionResult> {
     return {
@@ -149,12 +167,12 @@ export class MockProvider implements IAdProvider {
   // externalCampaignId as an idempotency key without extra bookkeeping.
 
   async createCampaign(
-    adAccountId: string,
+    account: AdAccountRef,
     draft: NormalizedCampaignDraft,
   ): Promise<ProviderActionResult> {
     const externalId = this.deterministicId('campaign', [
       this.platform,
-      adAccountId,
+      account.externalId,
       draft.name,
       draft.objective,
       String(draft.isCbo),
@@ -171,12 +189,12 @@ export class MockProvider implements IAdProvider {
   }
 
   async createAdSet(
-    adAccountId: string,
+    account: AdAccountRef,
     draft: NormalizedAdSetDraft,
   ): Promise<ProviderActionResult> {
     const externalId = this.deterministicId('adset', [
       this.platform,
-      adAccountId,
+      account.externalId,
       draft.campaignExternalId,
       draft.name,
       draft.biddingStrategy,
@@ -193,12 +211,12 @@ export class MockProvider implements IAdProvider {
   }
 
   async uploadCreative(
-    adAccountId: string,
+    account: AdAccountRef,
     draft: CreativeDraft,
   ): Promise<ProviderActionResult> {
     const externalId = this.deterministicId('creative', [
       this.platform,
-      adAccountId,
+      account.externalId,
       draft.name,
       ...draft.assetRefs,
     ]);
@@ -214,12 +232,12 @@ export class MockProvider implements IAdProvider {
   }
 
   async createAd(
-    adAccountId: string,
+    account: AdAccountRef,
     draft: NormalizedAdDraft,
   ): Promise<ProviderActionResult> {
     const externalId = this.deterministicId('ad', [
       this.platform,
-      adAccountId,
+      account.externalId,
       draft.adSetExternalId,
       draft.creativeExternalId,
       draft.name,

@@ -22,6 +22,7 @@ export class StrategicSummaryService {
     GOOGLE_ADS: 5,
     TIKTOK: 20,
     SNAPCHAT: 20,
+    TWITTER: 5,
   };
 
   private static readonly HEALTHY_MULTIPLIER = 5;

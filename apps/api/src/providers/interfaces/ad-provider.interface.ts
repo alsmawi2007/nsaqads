@@ -2,7 +2,13 @@
 // The optimizer engine and all platform-facing code must use ONLY these types.
 // No provider-specific field names or raw API objects may cross this boundary.
 
-export type Platform = 'META' | 'TIKTOK' | 'GOOGLE_ADS' | 'SNAPCHAT';
+import type { AdAccountRef } from './ad-account-ref';
+import type { ProviderCapabilities } from './provider-capabilities';
+
+export type Platform = 'META' | 'TIKTOK' | 'GOOGLE_ADS' | 'SNAPCHAT' | 'TWITTER';
+
+export type { AdAccountRef } from './ad-account-ref';
+export type { ProviderCapabilities } from './provider-capabilities';
 
 export enum BiddingStrategy {
   LOWEST_COST = 'LOWEST_COST',
@@ -150,46 +156,60 @@ export interface NormalizedAdDraft {
 
 // ─── Provider Interface ───────────────────────────────────────────────────────
 
+// ─── Optional context hints provided to read paths ───────────────────────────
+// Some normalization decisions (especially conversion event mapping) depend
+// on knowing the campaign's objective. Callers pass what they know; providers
+// fall back to a sensible default when fields are absent.
+export interface FetchMetricsHints {
+  objective?: string;        // normalized objective; provider routes to the right conversion config
+}
+
 export interface IAdProvider {
   readonly platform: Platform;
 
-  validateCredentials(adAccountId: string): Promise<boolean>;
-  refreshAccessToken(adAccountId: string): Promise<void>;
+  // Capability descriptor — see ProviderCapabilities for semantics. Static
+  // per platform (does not depend on the account); the optimizer consults
+  // this before proposing actions.
+  getCapabilities(): ProviderCapabilities;
 
-  fetchCampaigns(adAccountId: string): Promise<NormalizedCampaign[]>;
-  fetchAdSets(adAccountId: string, campaignExternalId: string): Promise<NormalizedAdSet[]>;
+  validateCredentials(account: AdAccountRef): Promise<boolean>;
+  refreshAccessToken(account: AdAccountRef): Promise<void>;
+
+  fetchCampaigns(account: AdAccountRef): Promise<NormalizedCampaign[]>;
+  fetchAdSets(account: AdAccountRef, campaignExternalId: string): Promise<NormalizedAdSet[]>;
   fetchMetrics(
-    adAccountId: string,
+    account: AdAccountRef,
     entityType: 'CAMPAIGN' | 'AD_SET',
     externalId: string,
     windowHours: 24 | 48 | 72,
+    hints?: FetchMetricsHints,
   ): Promise<NormalizedMetrics>;
 
-  updateBudget(adAccountId: string, params: UpdateBudgetParams): Promise<ProviderActionResult>;
+  updateBudget(account: AdAccountRef, params: UpdateBudgetParams): Promise<ProviderActionResult>;
   updateBiddingStrategy(
-    adAccountId: string,
+    account: AdAccountRef,
     params: UpdateBiddingStrategyParams,
   ): Promise<ProviderActionResult>;
   updateBidLimits(
-    adAccountId: string,
+    account: AdAccountRef,
     params: UpdateBidLimitsParams,
   ): Promise<ProviderActionResult>;
 
   // ─── Creation (Campaign Architect) ────────────────────────────────────────
   createCampaign(
-    adAccountId: string,
+    account: AdAccountRef,
     draft: NormalizedCampaignDraft,
   ): Promise<ProviderActionResult>;
   createAdSet(
-    adAccountId: string,
+    account: AdAccountRef,
     draft: NormalizedAdSetDraft,
   ): Promise<ProviderActionResult>;
   uploadCreative(
-    adAccountId: string,
+    account: AdAccountRef,
     draft: CreativeDraft,
   ): Promise<ProviderActionResult>;
   createAd(
-    adAccountId: string,
+    account: AdAccountRef,
     draft: NormalizedAdDraft,
   ): Promise<ProviderActionResult>;
 }

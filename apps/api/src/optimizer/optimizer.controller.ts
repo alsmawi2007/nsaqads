@@ -189,9 +189,93 @@ export class OptimizerController {
   @UseGuards(RolesGuard)
   @Roles(MemberRole.ADMIN)
   @ApiOperation({ summary: 'Simulate optimizer cycle — returns proposed actions without applying any changes (ADMIN+)' })
-  @ApiResponse({ status: 200, description: 'Proposed and guardrail-skipped actions for the org, with no DB writes or provider calls' })
-  simulate(@Param('orgId') orgId: string) {
-    return this.optimizer.simulateCycleForOrg(orgId);
+  @ApiResponse({ status: 200, description: 'Enriched SimulateResult[] for the org, with no DB writes or provider calls' })
+  async simulate(@Param('orgId') orgId: string) {
+    const { approved } = await this.optimizer.simulateCycleForOrg(orgId);
+
+    if (approved.length === 0) return [];
+
+    const campaignIds = [...new Set(approved.filter((a) => a.entityType === 'CAMPAIGN').map((a) => a.entityId))];
+    const adSetIds    = [...new Set(approved.filter((a) => a.entityType === 'AD_SET').map((a) => a.entityId))];
+    const ruleIds     = [...new Set(approved.map((a) => a.ruleId).filter((x): x is string => !!x))];
+
+    const [campaigns, adSets, rules] = await Promise.all([
+      campaignIds.length
+        ? this.prisma.campaign.findMany({ where: { id: { in: campaignIds } }, select: { id: true, name: true } })
+        : [],
+      adSetIds.length
+        ? this.prisma.adSet.findMany({
+            where: { id: { in: adSetIds } },
+            select: { id: true, name: true, campaign: { select: { id: true, name: true } } },
+          })
+        : [],
+      ruleIds.length
+        ? this.prisma.optimizerRule.findMany({ where: { id: { in: ruleIds } }, select: { id: true, name: true } })
+        : [],
+    ]);
+
+    const campaignMap = new Map(campaigns.map((c) => [c.id, c.name]));
+    const adSetMap    = new Map(adSets.map((s) => [s.id, s]));
+    const ruleMap     = new Map(rules.map((r) => [r.id, r.name]));
+
+    const simulatedAt = new Date().toISOString();
+
+    return approved.map((p, i) => {
+      const isAdSet      = p.entityType === 'AD_SET';
+      const adSet        = isAdSet ? adSetMap.get(p.entityId) : undefined;
+      const campaignId   = isAdSet ? adSet?.campaign.id   : p.entityId;
+      const campaignName = isAdSet ? adSet?.campaign.name : campaignMap.get(p.entityId);
+
+      const { before, after } = this.buildSimulateDiff(p);
+
+      return {
+        isSimulated: true as const,
+        id:           `sim-${p.entityId}-${p.ruleId}-${i}`,
+        campaignId:   campaignId   ?? p.entityId,
+        campaignName: campaignName ?? '—',
+        adSetId:      isAdSet ? p.entityId   : null,
+        adSetName:    adSet?.name ?? null,
+        entityType:   p.entityType,
+        platform:     p.platform,
+        actionType:   p.actionType,
+        ruleName:     ruleMap.get(p.ruleId) ?? '—',
+        before,
+        after,
+        explanation:  p.explanation,
+        projectedImpact: [],
+        simulatedAt,
+      };
+    });
+  }
+
+  // Build before/after dicts shaped to match what ValueDiff renders for each action type.
+  private buildSimulateDiff(p: import('./dto/proposed-action.dto').ProposedAction):
+    { before: Record<string, unknown>; after: Record<string, unknown> } {
+    switch (p.actionType) {
+      case 'INCREASE_BUDGET':
+      case 'DECREASE_BUDGET':
+        return {
+          before: { daily_budget: p.currentValue  ?? 0, currency: p.adAccountCurrency },
+          after:  { daily_budget: p.proposedValue ?? 0, currency: p.adAccountCurrency },
+        };
+      case 'SWITCH_BIDDING_STRATEGY':
+        return {
+          before: { bidding_strategy: p.currentValue ?? null },
+          after:  { bidding_strategy: p.targetValue  ?? null },
+        };
+      case 'ADJUST_BID_CEILING':
+        return {
+          before: { bid_ceiling_sar: p.currentValue  ?? null },
+          after:  { bid_ceiling_sar: p.proposedValue ?? null },
+        };
+      case 'ADJUST_BID_FLOOR':
+        return {
+          before: { bid_floor_sar: p.currentValue  ?? null },
+          after:  { bid_floor_sar: p.proposedValue ?? null },
+        };
+      default:
+        return { before: {}, after: {} };
+    }
   }
 
   @Get('cooldowns')

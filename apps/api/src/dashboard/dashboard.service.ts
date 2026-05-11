@@ -1,6 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
+export interface DashboardKPITrends {
+  spend: number;          // % change vs yesterday (positive = up)
+  conversions: number;
+  roas: number;
+  cpa: number;            // for CPA, negative = good (lower cost)
+  ctr: number;
+}
+
 export interface DashboardKPIs {
   totalSpend: number;
   totalConversions: number;
@@ -8,6 +16,7 @@ export interface DashboardKPIs {
   avgCpa: number;
   avgCtr: number;
   activeCampaigns: number;
+  trends: DashboardKPITrends;
 }
 
 export interface DashboardCampaignMetrics {
@@ -77,16 +86,17 @@ export class DashboardService {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
 
-    // Run all queries in parallel for minimal latency
+    // Run all queries in parallel for minimal latency.
+    // Snapshot window: 72h so we can split into "today" (most recent per campaign)
+    // vs "yesterday" (next-most-recent ≥ 24h older) for trend comparison.
     const [snapshots, campaigns, actionsToday, recentActionRows, recentAlerts] = await Promise.all([
-      // Latest 24h metric snapshots for all active campaigns
       this.prisma.metricSnapshot.findMany({
         where: {
           orgId,
           entityType: 'CAMPAIGN',
           windowHours: 24,
           snapshotDate: {
-            gte: new Date(Date.now() - 48 * 60 * 60 * 1000),
+            gte: new Date(Date.now() - 72 * 60 * 60 * 1000),
           },
         },
         orderBy: { snapshotDate: 'desc' },
@@ -146,25 +156,60 @@ export class DashboardService {
       }),
     ]);
 
-    // Build latest-snapshot-per-entity map (most recent first from the sort above)
-    const latestByEntity = new Map<string, typeof snapshots[0]>();
+    // Build today/yesterday snapshot maps. Snapshots are sorted desc above,
+    // so the first hit per entity is "today" and the next one ≥ 18h older is "yesterday".
+    const latestByEntity      = new Map<string, typeof snapshots[0]>();
+    const yesterdayByEntity   = new Map<string, typeof snapshots[0]>();
+    const YESTERDAY_GAP_HOURS = 18; // tolerance: snapshots taken anywhere from ~18–30h before today's
     for (const snap of snapshots) {
-      if (!latestByEntity.has(snap.entityId)) {
+      const today = latestByEntity.get(snap.entityId);
+      if (!today) {
         latestByEntity.set(snap.entityId, snap);
+        continue;
+      }
+      if (yesterdayByEntity.has(snap.entityId)) continue;
+      const gapHours = (today.snapshotDate.getTime() - snap.snapshotDate.getTime()) / 3_600_000;
+      if (gapHours >= YESTERDAY_GAP_HOURS) {
+        yesterdayByEntity.set(snap.entityId, snap);
       }
     }
 
-    const allSnaps = [...latestByEntity.values()];
+    const todaySnaps     = [...latestByEntity.values()];
+    const yesterdaySnaps = [...yesterdayByEntity.values()];
 
-    // Aggregate KPIs from the snapshots
-    const totalSpend = allSnaps.reduce((s, x) => s + (x.spend?.toNumber() ?? 0), 0);
-    const totalConversions = allSnaps.reduce((s, x) => s + Number(x.conversions ?? 0), 0);
-    const roasValues = allSnaps.map((x) => x.roas?.toNumber() ?? 0).filter((v) => v > 0);
-    const cpaValues = allSnaps.map((x) => x.cpa?.toNumber() ?? 0).filter((v) => v > 0);
-    const ctrValues = allSnaps.map((x) => x.ctr?.toNumber() ?? 0).filter((v) => v > 0);
-    const avgRoas = roasValues.length ? roasValues.reduce((a, b) => a + b, 0) / roasValues.length : 0;
-    const avgCpa  = cpaValues.length  ? cpaValues.reduce((a, b) => a + b, 0) / cpaValues.length  : 0;
-    const avgCtr  = ctrValues.length  ? ctrValues.reduce((a, b) => a + b, 0) / ctrValues.length  : 0;
+    // Aggregate KPIs from today's snapshots
+    const aggregate = (snaps: typeof snapshots) => {
+      const spend       = snaps.reduce((s, x) => s + (x.spend?.toNumber() ?? 0), 0);
+      const conversions = snaps.reduce((s, x) => s + Number(x.conversions ?? 0), 0);
+      const roasValues  = snaps.map((x) => x.roas?.toNumber() ?? 0).filter((v) => v > 0);
+      const cpaValues   = snaps.map((x) => x.cpa?.toNumber()  ?? 0).filter((v) => v > 0);
+      const ctrValues   = snaps.map((x) => x.ctr?.toNumber()  ?? 0).filter((v) => v > 0);
+      const avg = (vs: number[]) => (vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : 0);
+      return {
+        spend, conversions,
+        roas: avg(roasValues), cpa: avg(cpaValues), ctr: avg(ctrValues),
+      };
+    };
+
+    const today     = aggregate(todaySnaps);
+    const yesterday = aggregate(yesterdaySnaps);
+
+    // Percent change vs yesterday — 0 when yesterday is 0 or absent (avoids divide-by-zero).
+    const pctChange = (now: number, prev: number) => (prev > 0 ? ((now - prev) / prev) * 100 : 0);
+
+    const trends: DashboardKPITrends = {
+      spend:       pctChange(today.spend,       yesterday.spend),
+      conversions: pctChange(today.conversions, yesterday.conversions),
+      roas:        pctChange(today.roas,        yesterday.roas),
+      cpa:         pctChange(today.cpa,         yesterday.cpa),
+      ctr:         pctChange(today.ctr,         yesterday.ctr),
+    };
+
+    const totalSpend       = today.spend;
+    const totalConversions = today.conversions;
+    const avgRoas          = today.roas;
+    const avgCpa           = today.cpa;
+    const avgCtr           = today.ctr;
 
     // Enrich campaigns with their latest snapshot metrics
     const enrichedCampaigns: DashboardCampaign[] = campaigns.map((c) => {
@@ -221,6 +266,7 @@ export class DashboardService {
         avgCpa,
         avgCtr,
         activeCampaigns: campaigns.length,
+        trends,
       },
       campaigns: enrichedCampaigns,
       optimizerToday: {

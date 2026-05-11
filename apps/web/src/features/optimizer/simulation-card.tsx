@@ -16,7 +16,10 @@ import { cn } from '@/lib/utils/cn';
 import { PlatformBadge } from '@/components/shared/platform-badge';
 import { formatRelativeTime } from '@/lib/utils/format';
 import { ValueDiff } from './value-diff';
-import type { SimulatedAction, SimulatedImpact, ConfidenceLevel, ImpactDirection } from './mock-simulation';
+import type { SimulateResult, SimulatedImpact } from '@/lib/api/optimizer';
+
+type ImpactDirection = SimulatedImpact['direction'];
+type ConfidenceLevel = SimulatedImpact['confidence'];
 
 // ─── Impact metric row ────────────────────────────────────────────────────────
 
@@ -131,7 +134,7 @@ function ImpactProjection({ impacts }: { impacts: SimulatedImpact[] }) {
 // ─── SimulationCard ───────────────────────────────────────────────────────────
 
 interface SimulationCardProps {
-  action: SimulatedAction;
+  action: SimulateResult;
 }
 
 export function SimulationCard({ action }: SimulationCardProps) {

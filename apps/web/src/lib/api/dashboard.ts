@@ -3,6 +3,14 @@ import type { Platform, CampaignPhase, CampaignStatus, OptimizerMode } from './c
 import type { ActionType, ActionStatus, TriggeredBy } from './optimizer';
 import type { AlertType, AlertSeverity } from './alerts';
 
+export interface DashboardKPITrends {
+  spend: number;
+  conversions: number;
+  roas: number;
+  cpa: number;
+  ctr: number;
+}
+
 export interface DashboardKPIs {
   totalSpend: number;
   totalConversions: number;
@@ -10,6 +18,7 @@ export interface DashboardKPIs {
   avgCpa: number;
   avgCtr: number;
   activeCampaigns: number;
+  trends: DashboardKPITrends;
 }
 
 export interface DashboardCampaign {

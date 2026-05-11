@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProviderFactory } from '../providers/factory/provider.factory';
 import { NormalizedMetrics } from '../providers/interfaces/ad-provider.interface';
+import { refFromAccount } from '../providers/interfaces/ad-account-ref';
 import { Platform } from '@prisma/client';
 
 @Injectable()
@@ -17,7 +18,10 @@ export class MetricsIngestionService {
     entityType: 'CAMPAIGN' | 'AD_SET',
     externalId: string,
     entityId: string,
+    objective?: string,
   ): Promise<void> {
+    const account = await this.prisma.adAccount.findUniqueOrThrow({ where: { id: adAccountId } });
+    const ref = refFromAccount(account);
     const provider = this.providerFactory.getProvider(platform);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -30,7 +34,7 @@ export class MetricsIngestionService {
       if (exists) continue; // Already ingested today for this window
 
       try {
-        const metrics = await provider.fetchMetrics(adAccountId, entityType, externalId, windowHours);
+        const metrics = await provider.fetchMetrics(ref, entityType, externalId, windowHours, { objective });
         await this.persistSnapshot(orgId, entityType, entityId, platform, today, windowHours, metrics);
       } catch (err: unknown) {
         this.logger.error(`Failed to ingest ${windowHours}h metrics for ${entityType} ${entityId}: ${err}`);

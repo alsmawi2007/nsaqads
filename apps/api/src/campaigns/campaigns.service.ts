@@ -3,6 +3,7 @@ import { CampaignPhase, OptimizerMode } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ProviderFactory } from '../providers/factory/provider.factory';
+import { refFromAccount } from '../providers/interfaces/ad-account-ref';
 
 @Injectable()
 export class CampaignsService {
@@ -66,8 +67,9 @@ export class CampaignsService {
   async syncAdSets(campaignId: string, orgId: string) {
     const campaign = await this.findOne(campaignId, orgId);
     const provider = this.providerFactory.getProvider(campaign.platform);
+    const adAccount = await this.prisma.adAccount.findUniqueOrThrow({ where: { id: campaign.adAccountId } });
 
-    const adSets = await provider.fetchAdSets(campaign.adAccountId, campaign.externalId);
+    const adSets = await provider.fetchAdSets(refFromAccount(adAccount), campaign.externalId);
     for (const a of adSets) {
       await this.prisma.adSet.upsert({
         where: { campaignId_externalId: { campaignId, externalId: a.externalId } },

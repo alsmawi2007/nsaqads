@@ -27,6 +27,7 @@ import {
   NormalizedCampaignDraft,
   ProviderActionResult,
 } from '../../providers/interfaces/ad-provider.interface';
+import { AdAccountRef } from '../../providers/interfaces/ad-account-ref';
 import {
   LaunchProgressSummaryDto,
   LaunchResultDto,
@@ -224,7 +225,7 @@ export class LauncherService {
     userId: string,
     plan: CampaignPlan,
     item: CampaignPlanItem,
-    adAccountMap: Map<string, { externalId: string; status: string }>,
+    adAccountMap: Map<string, { ref: AdAccountRef; status: string }>,
   ): Promise<ItemOutcome> {
     if (item.launchStatus === CampaignPlanItemLaunchStatus.CREATED) {
       return {
@@ -331,7 +332,7 @@ export class LauncherService {
     orgId: string,
     plan: CampaignPlan,
     item: CampaignPlanItem,
-    adAccountMap: Map<string, { externalId: string; status: string }>,
+    adAccountMap: Map<string, { ref: AdAccountRef; status: string }>,
     initialExternalCampaignId: string | null,
     initialExternalAdsetIds: string[] | null,
   ): Promise<{
@@ -346,12 +347,13 @@ export class LauncherService {
         `Ad account ${item.adAccountId} not found or not active for org ${orgId}.`,
       );
     }
+    const ref = adAccount.ref;
     const provider: IAdProvider = this.providers.getProvider(item.platform);
 
-    const credsValid = await provider.validateCredentials(adAccount.externalId);
+    const credsValid = await provider.validateCredentials(ref);
     if (!credsValid) {
       throw new Error(
-        `Provider credentials invalid for ${item.platform} account ${adAccount.externalId}.`,
+        `Provider credentials invalid for ${item.platform} account ${ref.externalId}.`,
       );
     }
 
@@ -361,7 +363,7 @@ export class LauncherService {
     // 1. Campaign — skip if already created
     if (!externalCampaignId) {
       const campaignDraft = this.buildCampaignDraft(plan, item);
-      const result = await provider.createCampaign(adAccount.externalId, campaignDraft);
+      const result = await provider.createCampaign(ref, campaignDraft);
       this.assertProviderSuccess(result, 'createCampaign');
       externalCampaignId = result.externalId;
     } else {
@@ -379,7 +381,7 @@ export class LauncherService {
       );
     } else {
       const adSetDraft = this.buildAdSetDraft(plan, item, externalCampaignId);
-      const result = await provider.createAdSet(adAccount.externalId, adSetDraft);
+      const result = await provider.createAdSet(ref, adSetDraft);
       this.assertProviderSuccess(result, 'createAdSet');
       adSetExternalId = result.externalId;
       externalAdsetIds = [adSetExternalId];
@@ -389,10 +391,7 @@ export class LauncherService {
     // Real providers would persist externalCreativeId on the item; in the
     // MVP launcher we accept the re-call cost on retry.
     const creativeDraft = this.buildCreativeDraft(item);
-    const creativeResult = await provider.uploadCreative(
-      adAccount.externalId,
-      creativeDraft,
-    );
+    const creativeResult = await provider.uploadCreative(ref, creativeDraft);
     this.assertProviderSuccess(creativeResult, 'uploadCreative');
     const externalCreativeId = creativeResult.externalId;
 
@@ -403,7 +402,7 @@ export class LauncherService {
       name: this.adName(plan, item),
       status: 'PAUSED',
     };
-    const adResult = await provider.createAd(adAccount.externalId, adDraft);
+    const adResult = await provider.createAd(ref, adDraft);
     this.assertProviderSuccess(adResult, 'createAd');
     const externalAdId = adResult.externalId;
 
@@ -520,15 +519,18 @@ export class LauncherService {
   private async loadAdAccounts(
     orgId: string,
     items: CampaignPlanItem[],
-  ): Promise<Map<string, { externalId: string; status: string }>> {
+  ): Promise<Map<string, { ref: AdAccountRef; status: string }>> {
     const ids = Array.from(new Set(items.map((i) => i.adAccountId)));
     const rows = await this.prisma.adAccount.findMany({
       where: { orgId, id: { in: ids } },
     });
-    const map = new Map<string, { externalId: string; status: string }>();
+    const map = new Map<string, { ref: AdAccountRef; status: string }>();
     for (const row of rows) {
       if (row.deletedAt !== null) continue;
-      map.set(row.id, { externalId: row.externalId, status: row.status });
+      map.set(row.id, {
+        ref: { id: row.id, externalId: row.externalId, platform: row.platform },
+        status: row.status,
+      });
     }
     return map;
   }

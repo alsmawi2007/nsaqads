@@ -9,6 +9,9 @@ const PLATFORM_FUNNEL: Record<Platform, FunnelStage> = {
   TIKTOK: 'TOFU',
   GOOGLE_ADS: 'BOFU',
   SNAPCHAT: 'TOFU',
+  // X / Twitter is awareness/engagement-driven; classify with the other
+  // top-of-funnel social platforms.
+  TWITTER: 'TOFU',
 };
 
 const BASE_FITNESS = 1.0;

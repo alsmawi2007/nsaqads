@@ -56,6 +56,13 @@ export class AdAccountsController {
     return this.service.disconnect(accountId, orgId, user.sub);
   }
 
+  @Get(':accountId/health')
+  @ApiOperation({ summary: 'Check ad account credentials + token expiry — non-mutating, safe to poll' })
+  @ApiParam({ name: 'accountId', type: String })
+  health(@Param('orgId') orgId: string, @Param('accountId') accountId: string) {
+    return this.service.health(accountId, orgId);
+  }
+
   @Post(':accountId/sync')
   @UseGuards(RolesGuard)
   @Roles(MemberRole.MEMBER)

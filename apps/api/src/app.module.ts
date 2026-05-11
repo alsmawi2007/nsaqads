@@ -12,8 +12,10 @@ import { AdAccountsModule } from './ad-accounts/ad-accounts.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { ProvidersModule } from './providers/providers.module';
+import { ProviderConfigsModule } from './provider-configs/provider-configs.module';
 import { AdminModule } from './admin/admin.module';
 import { OptimizerModule } from './optimizer/optimizer.module';
+import { InsightsModule } from './insights/insights.module';
 import { AlertsModule } from './alerts/alerts.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
@@ -38,12 +40,14 @@ import { HistoricalLearningModule } from './historical-learning/historical-learn
     AuditModule,
     AuthModule,
     OrganizationsModule,
+    ProviderConfigsModule,
     ProvidersModule,
     AdAccountsModule,
     CampaignsModule,
     MetricsModule,
     AdminModule,
     OptimizerModule,
+    InsightsModule,
     AlertsModule,
     DashboardModule,
     HealthModule,

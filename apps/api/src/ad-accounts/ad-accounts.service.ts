@@ -3,6 +3,7 @@ import { AdAccountStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { ProviderFactory } from '../providers/factory/provider.factory';
+import { refFromAccount } from '../providers/interfaces/ad-account-ref';
 import { encrypt } from '../common/utils/crypto.util';
 import { ConnectAdAccountDto } from './dto/connect-account.dto';
 
@@ -63,11 +64,44 @@ export class AdAccountsService {
     });
   }
 
+  async health(id: string, orgId: string): Promise<{
+    id: string;
+    platform: string;
+    status: string;
+    tokenExpiresAt: Date | null;
+    credentialsValid: boolean;
+    lastSyncedAt: Date | null;
+    errorMessage: string | null;
+  }> {
+    const account = await this.prisma.adAccount.findFirst({ where: { id, orgId } });
+    if (!account) throw new NotFoundException('Ad account not found');
+
+    const provider = this.providerFactory.getProvider(account.platform);
+    let credentialsValid = false;
+    let errorMessage = account.errorMessage;
+    try {
+      credentialsValid = await provider.validateCredentials(refFromAccount(account));
+    } catch (err: unknown) {
+      credentialsValid = false;
+      errorMessage = err instanceof Error ? err.message : String(err);
+    }
+
+    return {
+      id: account.id,
+      platform: account.platform,
+      status: account.status,
+      tokenExpiresAt: account.tokenExpiresAt,
+      credentialsValid,
+      lastSyncedAt: account.lastSyncedAt,
+      errorMessage,
+    };
+  }
+
   async sync(id: string, orgId: string, userId: string) {
     const account = await this.prisma.adAccount.findFirstOrThrow({ where: { id, orgId } });
     const provider = this.providerFactory.getProvider(account.platform);
 
-    const campaigns = await provider.fetchCampaigns(account.externalId);
+    const campaigns = await provider.fetchCampaigns(refFromAccount(account));
 
     for (const c of campaigns) {
       await this.prisma.campaign.upsert({

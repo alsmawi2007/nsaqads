@@ -84,14 +84,14 @@ export class OptimizerService {
 
     // Evaluate campaigns
     for (const campaign of campaigns) {
-      const proposed = await this.evaluator.evaluateCampaign(campaign as Parameters<EvaluatorService['evaluateCampaign']>[0], allRules);
-      allProposed = allProposed.concat(proposed);
+      const result = await this.evaluator.evaluateCampaign(campaign as Parameters<EvaluatorService['evaluateCampaign']>[0], allRules);
+      allProposed = allProposed.concat(result.proposed);
     }
 
     // Evaluate ad sets
     for (const adSet of adSets) {
-      const proposed = await this.evaluator.evaluateAdSet(adSet as Parameters<EvaluatorService['evaluateAdSet']>[0], allRules);
-      allProposed = allProposed.concat(proposed);
+      const result = await this.evaluator.evaluateAdSet(adSet as Parameters<EvaluatorService['evaluateAdSet']>[0], allRules);
+      allProposed = allProposed.concat(result.proposed);
     }
 
     // Guardrail validation
@@ -162,13 +162,13 @@ export class OptimizerService {
     let allProposed: ProposedAction[] = [];
 
     for (const campaign of campaigns) {
-      const proposed = await this.evaluator.evaluateCampaign(campaign as Parameters<EvaluatorService['evaluateCampaign']>[0], allRules);
-      allProposed = allProposed.concat(proposed);
+      const result = await this.evaluator.evaluateCampaign(campaign as Parameters<EvaluatorService['evaluateCampaign']>[0], allRules);
+      allProposed = allProposed.concat(result.proposed);
     }
 
     for (const adSet of adSets) {
-      const proposed = await this.evaluator.evaluateAdSet(adSet as Parameters<EvaluatorService['evaluateAdSet']>[0], allRules);
-      allProposed = allProposed.concat(proposed);
+      const result = await this.evaluator.evaluateAdSet(adSet as Parameters<EvaluatorService['evaluateAdSet']>[0], allRules);
+      allProposed = allProposed.concat(result.proposed);
     }
 
     // Run guardrail validation — no executor call, no DB writes

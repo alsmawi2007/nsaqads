@@ -75,6 +75,17 @@ export class DecisionEngineService {
       SALES: 'WEB_CONVERSION',
       APP_INSTALLS: 'APP_INSTALL',
     },
+    // X / Twitter is a config-only platform until a TwitterProvider lands.
+    // SUPPORTED_PLATFORMS does not include TWITTER, so this entry is never
+    // reached at runtime — present only to satisfy the exhaustive Record type.
+    TWITTER: {
+      AWARENESS: 'REACH',
+      TRAFFIC: 'WEBSITE_CLICKS',
+      ENGAGEMENT: 'ENGAGEMENTS',
+      LEADS: 'LEAD_GENERATION',
+      SALES: 'WEBSITE_CONVERSIONS',
+      APP_INSTALLS: 'APP_INSTALLS',
+    },
   };
 
   private static readonly BUDGET_SHARES: Record<

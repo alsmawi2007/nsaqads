@@ -14,6 +14,9 @@ export class RiskCheckService {
     GOOGLE_ADS: 5,
     TIKTOK: 20,
     SNAPCHAT: 20,
+    // X / Twitter does not enforce a minimum daily budget on its end, but
+    // setting an analogous floor keeps the LOW_DAILY_BUDGET warning useful.
+    TWITTER: 5,
   };
 
   // Daily budget below this multiple of the platform minimum = LOW_DAILY_BUDGET warning

@@ -43,8 +43,6 @@ export default function DashboardPage() {
     staleTime: 60_000,
   });
 
-  // Adapt API data to the shape the components expect.
-  // KPI trends require historical comparison — not in API yet; default to 0.
   const kpis = data
     ? {
         totalSpend:       data.kpis.totalSpend,
@@ -52,7 +50,7 @@ export default function DashboardPage() {
         avgRoas:          data.kpis.avgRoas,
         avgCpa:           data.kpis.avgCpa,
         avgCtr:           data.kpis.avgCtr,
-        trends: { spend: 0, conversions: 0, roas: 0, cpa: 0, ctr: 0 },
+        trends:           data.kpis.trends,
       }
     : MOCK_KPIS;
 

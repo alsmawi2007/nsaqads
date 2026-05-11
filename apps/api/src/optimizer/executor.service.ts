@@ -6,8 +6,7 @@ import { CooldownService } from './cooldown.service';
 import { ProviderFactory } from '../providers/factory/provider.factory';
 import { ProposedAction } from './dto/proposed-action.dto';
 import { BiddingStrategy, UpdateBudgetParams } from '../providers/interfaces/ad-provider.interface';
-import { decrypt } from '../common/utils/crypto.util';
-
+import { AdAccountRef, refFromAccount } from '../providers/interfaces/ad-account-ref';
 export interface ExecutionResult {
   actionId: string;
   status: ActionStatus;
@@ -67,19 +66,19 @@ export class ExecutorService {
 
     try {
       const provider = this.providerFactory.getProvider(action.platform);
+      const ref = refFromAccount(adAccount);
 
       // Validate credentials — retry with refresh once
-      const credValid = await provider.validateCredentials(action.adAccountId);
+      const credValid = await provider.validateCredentials(ref);
       if (!credValid) {
-        await provider.refreshAccessToken(action.adAccountId);
+        await provider.refreshAccessToken(ref);
       }
 
       // Capture before state
       beforeValue = await this.captureEntityState(action);
 
       // Call the appropriate provider method
-      const decryptedToken = decrypt(adAccount.accessToken);
-      const providerResult = await this.callProvider(provider, action, decryptedToken);
+      const providerResult = await this.callProvider(provider, action, ref);
 
       if (providerResult.success) {
         await this.updateEntityInDb(action);
@@ -138,7 +137,7 @@ export class ExecutorService {
     }
   }
 
-  private async callProvider(provider: ReturnType<ProviderFactory['getProvider']>, action: ProposedAction, _token: string) {
+  private async callProvider(provider: ReturnType<ProviderFactory['getProvider']>, action: ProposedAction, ref: AdAccountRef) {
     switch (action.actionType) {
       case ActionType.INCREASE_BUDGET:
       case ActionType.DECREASE_BUDGET: {
@@ -147,10 +146,10 @@ export class ExecutorService {
           externalId: await this.getExternalId(action),
           newDailyBudget: action.proposedValue!,
         };
-        return provider.updateBudget(action.adAccountId, params);
+        return provider.updateBudget(ref, params);
       }
       case ActionType.SWITCH_BIDDING_STRATEGY: {
-        return provider.updateBiddingStrategy(action.adAccountId, {
+        return provider.updateBiddingStrategy(ref, {
           adSetExternalId: await this.getExternalId(action),
           newStrategy: action.targetValue as BiddingStrategy,
           newBidAmount: null,
@@ -158,7 +157,7 @@ export class ExecutorService {
       }
       case ActionType.ADJUST_BID_CEILING:
       case ActionType.ADJUST_BID_FLOOR: {
-        return provider.updateBidLimits(action.adAccountId, {
+        return provider.updateBidLimits(ref, {
           adSetExternalId: await this.getExternalId(action),
           newBidFloor: action.actionType === ActionType.ADJUST_BID_FLOOR ? action.proposedValue : null,
           newBidCeiling: action.actionType === ActionType.ADJUST_BID_CEILING ? action.proposedValue : null,

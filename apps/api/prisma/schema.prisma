@@ -33,6 +33,7 @@ enum Platform {
   TIKTOK
   GOOGLE_ADS
   SNAPCHAT
+  TWITTER
 }
 
 enum AdAccountStatus {
@@ -122,6 +123,7 @@ enum PlatformScope {
   TIKTOK
   GOOGLE_ADS
   SNAPCHAT
+  TWITTER
 }
 
 enum PhaseScope {
@@ -260,6 +262,19 @@ enum ScoringSkippedReason {
   ORG_NOT_CANARY
 }
 
+enum InsightInteractionStatus {
+  SEEN
+  DISMISSED
+  SAVED
+}
+
+enum InsightFeedback {
+  USEFUL
+  NOT_USEFUL
+  WRONG
+  NEEDS_MORE_CONTEXT
+}
+
 // ─── Users & Auth ─────────────────────────────────────────────────────────────
 
 model User {
@@ -275,15 +290,19 @@ model User {
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
-  refreshTokens        RefreshToken[]
-  memberships          Membership[]
-  invitedMemberships   Membership[]      @relation("InvitedBy")
-  optimizerActions     OptimizerAction[]
-  resolvedAlerts       Alert[]
-  auditLogs            AuditLog[]
-  updatedAdminSettings AdminSetting[]
-  createdPlans         CampaignPlan[]    @relation("CreatedPlans")
-  approvedPlans        CampaignPlan[]    @relation("ApprovedPlans")
+  refreshTokens          RefreshToken[]
+  memberships            Membership[]
+  invitedMemberships     Membership[]      @relation("InvitedBy")
+  optimizerActions       OptimizerAction[]
+  resolvedAlerts         Alert[]
+  auditLogs              AuditLog[]
+  updatedAdminSettings   AdminSetting[]
+  triggeredRuleTunings   RuleTuningLog[]   @relation("RuleTuningTriggeredBy")
+  rolledBackRuleTunings  RuleTuningLog[]   @relation("RuleTuningRolledBackBy")
+  createdPlans           CampaignPlan[]    @relation("CreatedPlans")
+  approvedPlans          CampaignPlan[]    @relation("ApprovedPlans")
+  updatedProviderConfigs ProviderConfig[]
+  insightInteractions    InsightInteraction[]
 
   @@map("users")
 }
@@ -330,6 +349,7 @@ model Organization {
   orgFeatures               OrgFeature[]
   featureComputeRuns        FeatureComputeRun[]
   platformScoringDecisions  PlatformScoringDecision[]
+  insightInteractions       InsightInteraction[]
 
   @@map("organizations")
 }
@@ -515,11 +535,57 @@ model OptimizerRule {
 
   org              Organization?     @relation(fields: [orgId], references: [id])
   optimizerActions OptimizerAction[]
+  ruleTuningLogs   RuleTuningLog[]
 
   @@index([orgId])
   @@index([ruleFamily])
   @@index([isEnabled])
   @@map("optimizer_rules")
+}
+
+// ─── Rule Tuning Log (Phase I — Controlled Auto-Tuning) ──────────────────────
+// Append-only record of every threshold/disable change the auto-tuner makes.
+// Powers rollback by run_id and gives admins a full audit trail of how the
+// system has self-modified over time. Distinct from audit_logs (which is
+// cross-cutting and append-only) so we can mark rows ROLLED_BACK without
+// violating audit-log immutability.
+
+enum RuleTuningChangeType {
+  TIGHTEN_THRESHOLD
+  DISABLE_RULE
+}
+
+enum RuleTuningStatus {
+  APPLIED
+  ROLLED_BACK
+}
+
+model RuleTuningLog {
+  id                String               @id @default(uuid())
+  runId             String               @map("run_id")
+  orgId             String?              @map("org_id")
+  ruleId            String               @map("rule_id")
+  changeType        RuleTuningChangeType @map("change_type")
+  fieldName         String               @map("field_name")
+  beforeValue       Json                 @map("before_value")
+  afterValue        Json                 @map("after_value")
+  status            RuleTuningStatus     @default(APPLIED)
+  triggeredByUserId String               @map("triggered_by_user_id")
+  appliedAt         DateTime             @default(now()) @map("applied_at")
+  rolledBackAt     DateTime?             @map("rolled_back_at")
+  rolledBackById   String?               @map("rolled_back_by")
+  rationale         Json
+
+  rule            OptimizerRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  triggeredByUser User          @relation("RuleTuningTriggeredBy", fields: [triggeredByUserId], references: [id])
+  rolledBackBy    User?         @relation("RuleTuningRolledBackBy", fields: [rolledBackById], references: [id])
+
+  @@index([runId])
+  @@index([ruleId])
+  @@index([orgId])
+  @@index([status])
+  @@index([appliedAt])
+  @@map("rule_tuning_logs")
 }
 
 // ─── Optimizer Actions ───────────────────────────────────────────────────────
@@ -647,6 +713,40 @@ model AdminSetting {
   @@unique([orgId, key])
   @@index([orgId])
   @@map("admin_settings")
+}
+
+// ─── Provider Configs ────────────────────────────────────────────────────────
+
+// Per-platform OAuth + API credentials, managed by SYSTEM_ADMIN at runtime.
+// Replaces hardcoded META_*/TIKTOK_*/etc. env vars. Secrets are AES-256-GCM
+// encrypted at rest using ENCRYPTION_KEY (same key as AdAccount tokens).
+//
+// Fallback policy: NONE. If a row is missing or isEnabled=false, OAuth and
+// API calls for that platform throw VALIDATION. Configure via the admin
+// dashboard before any provider flow runs.
+model ProviderConfig {
+  id                     String   @id @default(uuid())
+  platform               Platform @unique
+  isEnabled              Boolean  @default(false) @map("is_enabled")
+  appId                  String   @map("app_id")
+  appSecretCipher        String   @map("app_secret_cipher")
+  redirectUri            String   @map("redirect_uri")
+  oauthStateSecretCipher String   @map("oauth_state_secret_cipher")
+  apiVersion             String?  @map("api_version")
+  scopes                 String[] @default([])
+  extra                  Json?
+  // AES-256-GCM encrypted JSON blob for sensitive platform-specific
+  // credentials (e.g. Google Ads developer-token). Stored as the same
+  // ciphertext format as appSecretCipher.
+  extraSecretsCipher     String?  @map("extra_secrets_cipher")
+  keyVersion             Int      @default(1) @map("key_version")
+  updatedById            String?  @map("updated_by")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  updatedBy User? @relation(fields: [updatedById], references: [id])
+
+  @@map("provider_configs")
 }
 
 // ─── Campaign Architect ──────────────────────────────────────────────────────
@@ -850,4 +950,55 @@ model PlatformScoringDecision {
   @@index([planSynthesisRunId])
   @@index([platform, decidedAt])
   @@map("platform_scoring_decisions")
+}
+
+// ─── Insight Interactions ─────────────────────────────────────────────────────
+//
+// Insights themselves are computed on-demand and never persisted, so this
+// table does NOT foreign-key back to an insight row. Instead it tracks the
+// (deterministic) insight ID alongside the user/org context. The insight ID
+// is a SHA-1-derived string of (orgId, entityType, entityId, source) — stable
+// across requests as long as the underlying entity is identifiable.
+//
+// One row per (insightId, userId): the row stores the *latest* status and
+// feedback for that user on that insight. Updating mutates the same row
+// (last-write-wins) — appropriate for dashboard UX where a user marks
+// SEEN, then later DISMISSED, and we want to surface only the current state.
+
+model InsightInteraction {
+  id        String                    @id @default(uuid())
+  insightId String                    @map("insight_id")
+  orgId     String                    @map("org_id")
+  userId    String                    @map("user_id")
+  status    InsightInteractionStatus?
+  feedback  InsightFeedback?
+  note      String?                   @db.Text
+
+  // Denormalized metadata captured at write-time. Insights themselves are
+  // ephemeral (computed on demand, not persisted), so analytics can't join
+  // back to them — these columns freeze the dimensions the user acted on
+  // so feedback can be aggregated by rule / type / platform / priority.
+  // All nullable so callers can omit them; older interactions also lack them.
+  insightType       String?     @map("insight_type")
+  severity          String?
+  priority          String?
+  relatedRuleId     String?     @map("related_rule_id")
+  relatedActionType ActionType? @map("related_action_type")
+  platform          Platform?
+  entityType        String?     @map("entity_type")
+  entityId          String?     @map("entity_id")
+
+  createdAt DateTime                  @default(now()) @map("created_at")
+  updatedAt DateTime                  @updatedAt @map("updated_at")
+
+  org  Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  user User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([insightId, userId])
+  @@index([orgId, userId])
+  @@index([insightId])
+  @@index([orgId, insightType])
+  @@index([orgId, relatedRuleId])
+  @@index([orgId, platform])
+  @@map("insight_interactions")
 }

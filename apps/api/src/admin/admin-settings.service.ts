@@ -8,9 +8,14 @@ const DEFAULTS: Record<string, unknown> = {
   'optimizer.cooldown_hours': 24,
   'optimizer.max_budget_increase_pct': 30,
   'optimizer.max_budget_decrease_pct': 20,
+  'optimizer.max_bid_change_pct': 20,
   'optimizer.min_sample_impressions': 1000,
   'optimizer.cycle_interval_minutes': 60,
   'optimizer.default_mode': 'SUGGEST_ONLY',
+  'optimizer.target_roas': 3.0,
+  'optimizer.target_cpa': null,
+  'metrics.ingestion_enabled': true,
+  'metrics.ingestion_interval_hours': 6,
 };
 
 @Injectable()

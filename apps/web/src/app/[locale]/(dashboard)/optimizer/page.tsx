@@ -10,7 +10,7 @@
  *
  *   SIMULATION  — read-only "what would happen" preview.
  *                 Data: useMutation → optimizerApi.simulate()
- *                 Returns ProposedAction[] — adapted to SimulatedAction for display.
+ *                 Returns SimulateResult[] — enriched proposed actions, never persisted.
  */
 
 import { useState, useMemo, useCallback } from 'react';
@@ -23,9 +23,8 @@ import { Button } from '@/components/ui/button';
 import { FilterBar, EMPTY_FILTER, type FilterState } from '@/features/optimizer/filter-bar';
 import { Timeline, PAGE_SIZE } from '@/features/optimizer/timeline';
 import { SimulationCard } from '@/features/optimizer/simulation-card';
-import { MOCK_SIMULATION, type SimulatedAction } from '@/features/optimizer/mock-simulation';
 import { cn } from '@/lib/utils/cn';
-import type { ActionStatus, OptimizerAction } from '@/lib/api/optimizer';
+import type { ActionStatus, OptimizerAction, SimulateResult } from '@/lib/api/optimizer';
 
 // ─── View mode ────────────────────────────────────────────────────────────────
 
@@ -105,7 +104,7 @@ function SimulationView({
   running,
   onRun,
 }: {
-  actions: SimulatedAction[] | null;
+  actions: SimulateResult[] | null;
   running: boolean;
   onRun: () => void;
 }) {
@@ -222,7 +221,7 @@ export default function OptimizerPage() {
   const [viewMode, setViewMode]     = useState<ViewMode>('log');
   const [filters, setFilters]       = useState<FilterState>(EMPTY_FILTER);
   const [visibleCount, setVisible]  = useState(PAGE_SIZE);
-  const [simResults, setSimResults] = useState<SimulatedAction[] | null>(null);
+  const [simResults, setSimResults] = useState<SimulateResult[] | null>(null);
   const [simLastRun, setSimLastRun] = useState<string | null>(null);
 
   // ── Action log query ────────────────────────────────────────────────────
@@ -245,10 +244,8 @@ export default function OptimizerPage() {
   // ── Simulate mutation ───────────────────────────────────────────────────
   const simulateMutation = useMutation({
     mutationFn: () => optimizerApi.simulate(orgId),
-    onSuccess: () => {
-      // Use mock simulation for display since backend ProposedAction
-      // is a different shape from SimulatedAction (no projected impact yet)
-      setSimResults(MOCK_SIMULATION);
+    onSuccess: (data) => {
+      setSimResults(data);
       setSimLastRun(new Date().toISOString());
     },
   });

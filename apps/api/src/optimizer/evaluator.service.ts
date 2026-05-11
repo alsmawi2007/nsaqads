@@ -2,25 +2,48 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Campaign, AdSet, OptimizerRule, Platform, ActionType, CampaignPhase } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { applyRecencyWeight } from '../common/utils/recency-weight.util';
-import { applyDelta } from '../common/utils/currency.util';
 import { ProposedAction } from './dto/proposed-action.dto';
+import { BudgetRuleHandler } from './rules/budget-rule.handler';
+import { BiddingStrategyRuleHandler } from './rules/bidding-strategy-rule.handler';
+import { BidLimitRuleHandler } from './rules/bid-limit-rule.handler';
+import {
+  EvaluationResult,
+  IRuleHandler,
+  RuleHandlerContext,
+  SkipReason,
+} from './rules/rule-handler.interface';
 
 type CampaignWithAccount = Campaign & { adAccount: { id: string; currency: string } };
+
+const EMPTY: EvaluationResult = { proposed: [], skipped: [] };
 
 @Injectable()
 export class EvaluatorService {
   private readonly logger = new Logger(EvaluatorService.name);
+  private readonly registry: Map<ActionType, IRuleHandler>;
 
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private budgetHandler: BudgetRuleHandler,
+    private biddingHandler: BiddingStrategyRuleHandler,
+    private bidLimitHandler: BidLimitRuleHandler,
+  ) {
+    this.registry = new Map();
+    for (const handler of [budgetHandler, biddingHandler, bidLimitHandler]) {
+      for (const action of handler.supports) {
+        this.registry.set(action, handler);
+      }
+    }
+  }
 
   async evaluateCampaign(
     campaign: CampaignWithAccount,
     rules: OptimizerRule[],
-  ): Promise<ProposedAction[]> {
-    if (campaign.campaignPhase === CampaignPhase.LEARNING) return [];
+  ): Promise<EvaluationResult> {
+    if (campaign.campaignPhase === CampaignPhase.LEARNING) return EMPTY;
 
     const metrics = await this.loadWeightedMetrics(campaign.id, 'CAMPAIGN');
-    if (!metrics) return [];
+    if (!metrics) return EMPTY;
 
     const applicableRules = rules.filter((r) => {
       if (r.platformScope !== 'ALL' && r.platformScope !== campaign.platform) return false;
@@ -28,21 +51,32 @@ export class EvaluatorService {
       return true;
     });
 
-    return this.evaluateRules(campaign.id, 'CAMPAIGN', campaign.platform as Platform, campaign.adAccount, metrics, applicableRules, campaign);
+    const ctx: RuleHandlerContext = {
+      orgId: campaign.orgId,
+      entityType: 'CAMPAIGN',
+      entityId: campaign.id,
+      platform: campaign.platform as Platform,
+      adAccountId: campaign.adAccount.id,
+      adAccountCurrency: campaign.adAccount.currency,
+      metrics,
+      currentBaseline: campaign.dailyBudget !== null ? Number(campaign.dailyBudget) : null,
+    };
+
+    return this.dispatch(applicableRules, ctx);
   }
 
   async evaluateAdSet(
     adSet: AdSet & { campaign: CampaignWithAccount },
     rules: OptimizerRule[],
-  ): Promise<ProposedAction[]> {
-    const metrics = await this.loadWeightedMetrics(adSet.id, 'AD_SET');
-    if (!metrics) return [];
-
+  ): Promise<EvaluationResult> {
     const campaign = adSet.campaign;
-    if (campaign.campaignPhase === CampaignPhase.LEARNING) return [];
+    if (campaign.campaignPhase === CampaignPhase.LEARNING) return EMPTY;
+
+    const metrics = await this.loadWeightedMetrics(adSet.id, 'AD_SET');
+    if (!metrics) return EMPTY;
 
     const applicableRules = rules.filter((r) => {
-      if (r.platformScope !== 'ALL' && r.platformScope !== adSet.campaign.platform) return false;
+      if (r.platformScope !== 'ALL' && r.platformScope !== campaign.platform) return false;
       if (r.appliesToPhase !== 'ALL' && r.appliesToPhase !== campaign.campaignPhase) return false;
       // Budget rules at ad-set level only when not CBO
       if (
@@ -52,7 +86,41 @@ export class EvaluatorService {
       return true;
     });
 
-    return this.evaluateRules(adSet.id, 'AD_SET', adSet.campaign.platform as Platform, campaign.adAccount, metrics, applicableRules, null);
+    const ctx: RuleHandlerContext = {
+      orgId: adSet.orgId,
+      entityType: 'AD_SET',
+      entityId: adSet.id,
+      platform: campaign.platform as Platform,
+      adAccountId: campaign.adAccount.id,
+      adAccountCurrency: campaign.adAccount.currency,
+      metrics,
+      // Note: the evaluator does not load adSet.dailyBudget today. Preserved
+      // as null so behavior matches the prior implementation; budget rules
+      // on ad sets emit MISSING_BASELINE skips for the Insights layer.
+      currentBaseline: null,
+    };
+
+    return this.dispatch(applicableRules, ctx);
+  }
+
+  private dispatch(rules: OptimizerRule[], ctx: RuleHandlerContext): EvaluationResult {
+    const proposed: ProposedAction[] = [];
+    const skipped: SkipReason[] = [];
+
+    for (const rule of rules) {
+      const handler = this.registry.get(rule.actionType);
+      if (!handler) {
+        this.logger.warn(`No rule handler registered for actionType=${rule.actionType} (rule ${rule.id})`);
+        continue;
+      }
+      const result = handler.evaluate(rule, ctx);
+      if (result.kind === 'proposed') proposed.push(result.action);
+      else skipped.push(result.reason);
+    }
+
+    proposed.sort((a, b) => a.rulePriority - b.rulePriority);
+
+    return { proposed, skipped };
   }
 
   private async loadWeightedMetrics(entityId: string, entityType: string) {
@@ -102,95 +170,5 @@ export class EvaluatorService {
       }),
       impressions24h: w24 ? Number(w24.impressions) : 0,
     };
-  }
-
-  private evaluateRules(
-    entityId: string,
-    entityType: 'CAMPAIGN' | 'AD_SET',
-    platform: Platform,
-    adAccount: { id: string; currency: string },
-    metrics: Record<string, number | null>,
-    rules: OptimizerRule[],
-    campaign: CampaignWithAccount | null,
-  ): ProposedAction[] {
-    const actions: ProposedAction[] = [];
-
-    for (const rule of rules) {
-      const kpiValue = metrics[rule.kpiMetric];
-      if (kpiValue === null || kpiValue === undefined) continue;
-
-      const threshold = Number(rule.thresholdValue);
-
-      // G5: minimum sample size
-      if ((metrics['impressions24h'] ?? 0) < Number(rule.minSampleImpressions)) continue;
-
-      if (!this.compare(kpiValue, rule.comparator, threshold)) continue;
-
-      const currentBudget = entityType === 'CAMPAIGN'
-        ? (campaign ? Number(campaign.dailyBudget) : null)
-        : null;
-
-      const deltaPct = rule.actionDelta ? Number(rule.actionDelta) : null;
-      const proposedValue = (deltaPct !== null && currentBudget !== null)
-        ? applyDelta(currentBudget, deltaPct, adAccount.currency)
-        : null;
-
-      const explanation = this.buildExplanation(rule, kpiValue, threshold, currentBudget, proposedValue, adAccount.currency);
-
-      actions.push({
-        orgId: campaign?.orgId ?? '',
-        ruleId: rule.id,
-        entityType,
-        entityId,
-        platform,
-        actionType: rule.actionType as ActionType,
-        deltaPct,
-        targetValue: rule.actionTargetValue,
-        currentValue: currentBudget,
-        proposedValue,
-        explanation,
-        rulePriority: rule.priority,
-        adAccountId: adAccount.id,
-        adAccountCurrency: adAccount.currency,
-      });
-    }
-
-    // R1: Sort by priority before returning (lower = higher priority)
-    return actions.sort((a, b) => a.rulePriority - b.rulePriority);
-  }
-
-  private compare(value: number, comparator: string, threshold: number): boolean {
-    switch (comparator) {
-      case 'GT':  return value > threshold;
-      case 'LT':  return value < threshold;
-      case 'GTE': return value >= threshold;
-      case 'LTE': return value <= threshold;
-      case 'EQ':  return value === threshold;
-      default:    return false;
-    }
-  }
-
-  private buildExplanation(
-    rule: OptimizerRule,
-    kpiValue: number,
-    threshold: number,
-    currentBudget: number | null,
-    proposedValue: number | null,
-    currency: string,
-  ): { en: string; ar: null } {
-    const kpi = rule.kpiMetric.toUpperCase();
-    const action = rule.actionType.replace(/_/g, ' ').toLowerCase();
-
-    let en = `Rule "${rule.name}" triggered: ${kpi} was ${kpiValue.toFixed(2)} (threshold: ${rule.comparator} ${threshold}). `;
-
-    if (currentBudget !== null && proposedValue !== null) {
-      en += `Action: ${action} from ${currency} ${currentBudget.toFixed(2)} to ${currency} ${proposedValue.toFixed(2)}.`;
-    } else if (rule.actionTargetValue) {
-      en += `Action: ${action} to ${rule.actionTargetValue}.`;
-    } else {
-      en += `Action: ${action}.`;
-    }
-
-    return { en, ar: null };
   }
 }
