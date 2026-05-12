@@ -34,7 +34,9 @@
     "optimizer": "Optimizer",
     "alerts": "Alerts",
     "settings": "Settings",
-    "signOut": "Sign Out"
+    "providerConfigs": "Provider Configs",
+    "signOut": "Sign Out",
+    "toggleSidebar": "Toggle sidebar"
   },
   "auth": {
     "loginTitle": "Sign in to Nsaq",
@@ -483,5 +485,82 @@
     "notFound": "Page not found",
     "serverError": "Server error. Please try again.",
     "networkError": "Network error. Check your connection."
+  },
+  "providerConfigs": {
+    "title": "Provider Configs",
+    "subtitle": "OAuth + API credentials for each ad platform. Credentials are encrypted at rest and never returned over the wire.",
+    "safetyBanner": "Changing these affects every organization on this instance. OAuth flows already in progress will be invalidated when secrets are rotated.",
+    "forbidden": {
+      "title": "System admin access required",
+      "body": "This page is restricted to users with the system_admin role."
+    },
+    "status": {
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "notConfigured": "Not configured",
+      "notImplemented": "Provider not implemented"
+    },
+    "summary": {
+      "notConfiguredBody": "Register this redirect URI in the platform's developer console, then click Configure to enter the credentials.",
+      "redirectUriToRegister": "Redirect URI to register",
+      "redirectMismatchHint": "The stored redirect URI does not match the expected production URL: {url}",
+      "toggleLabel": "Enabled",
+      "toggleDescription": "Disable to block all OAuth start and token refresh for this platform.",
+      "appId": "App ID",
+      "appSecret": "App secret",
+      "apiVersion": "API version",
+      "scopes": "Scopes",
+      "scopesEmpty": "(none — uses provider default)",
+      "redirectUri": "Redirect URI",
+      "oauthStateSecret": "OAuth state secret",
+      "extraSecretKeys": "Extra secret keys",
+      "secretFingerprint": "set · ends with {last4}",
+      "secretMissing": "not set",
+      "updatedAt": "Updated {date}"
+    },
+    "form": {
+      "isEnabled": {
+        "label": "Enabled",
+        "description": "Disable to block OAuth start and refresh without losing the stored values."
+      },
+      "appId": {
+        "label": "App ID",
+        "placeholder": "From the platform's developer console"
+      },
+      "apiVersion": {
+        "label": "API version"
+      },
+      "redirectUri": {
+        "label": "Redirect URI",
+        "hint": "Must be HTTPS and byte-identical to what is whitelisted in the platform console. Suggested: {url}"
+      },
+      "appSecret": {
+        "label": "App secret"
+      },
+      "oauthStateSecret": {
+        "label": "OAuth state secret",
+        "hint": "Independent secret used to HMAC-sign the OAuth state JWT. Generate with: openssl rand -hex 32"
+      },
+      "scopes": {
+        "label": "Scopes (comma or space separated)"
+      },
+      "advanced": {
+        "title": "Advanced"
+      },
+      "secret": {
+        "existing": "stored · ends with {last4}",
+        "existingNoFingerprint": "stored",
+        "placeholderKeep": "leave blank to keep existing",
+        "placeholderEnter": "enter new value"
+      }
+    },
+    "actions": {
+      "configure": "Configure",
+      "edit": "Edit",
+      "save": "Save changes",
+      "create": "Create config",
+      "cancel": "Cancel",
+      "openDevConsole": "Developer console"
+    }
   }
 }

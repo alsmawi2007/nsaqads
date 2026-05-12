@@ -34,7 +34,9 @@
     "optimizer": "المحسّن",
     "alerts": "التنبيهات",
     "settings": "الإعدادات",
-    "signOut": "تسجيل الخروج"
+    "providerConfigs": "إعدادات المزودين",
+    "signOut": "تسجيل الخروج",
+    "toggleSidebar": "طي/توسيع الشريط الجانبي"
   },
   "auth": {
     "loginTitle": "تسجيل الدخول إلى نسق",
@@ -483,5 +485,82 @@
     "notFound": "الصفحة غير موجودة",
     "serverError": "خطأ في الخادم. يرجى المحاولة مرة أخرى.",
     "networkError": "خطأ في الشبكة. تحقق من اتصالك."
+  },
+  "providerConfigs": {
+    "title": "إعدادات المزودين",
+    "subtitle": "بيانات OAuth و API لكل منصة إعلانية. كل البيانات الحساسة مشفّرة في قاعدة البيانات ولا تُرجع عبر HTTP.",
+    "safetyBanner": "تغيير هذه الإعدادات يؤثر على كل المنظمات في هذه الخوادم. أي تدفقات OAuth جارية ستفشل عند تدوير الأسرار.",
+    "forbidden": {
+      "title": "يلزم صلاحية System Admin",
+      "body": "هذه الصفحة مخصصة فقط للمستخدمين بصلاحية system_admin."
+    },
+    "status": {
+      "enabled": "مفعّل",
+      "disabled": "معطّل",
+      "notConfigured": "غير مهيّأ",
+      "notImplemented": "غير منفّذ بعد"
+    },
+    "summary": {
+      "notConfiguredBody": "سجّل عنوان الـredirect أدناه في لوحة مطوّري المنصة، ثم اضغط «تهيئة» لإدخال البيانات.",
+      "redirectUriToRegister": "عنوان Redirect المطلوب تسجيله",
+      "redirectMismatchHint": "عنوان الـredirect المخزّن لا يطابق المتوقع للإنتاج: {url}",
+      "toggleLabel": "مفعّل",
+      "toggleDescription": "إلغاء التفعيل يوقف OAuth وتحديث الـtokens لهذه المنصة دون فقد البيانات.",
+      "appId": "App ID",
+      "appSecret": "App secret",
+      "apiVersion": "إصدار API",
+      "scopes": "الصلاحيات (Scopes)",
+      "scopesEmpty": "(فارغ — يستخدم القيمة الافتراضية للمزوّد)",
+      "redirectUri": "Redirect URI",
+      "oauthStateSecret": "OAuth state secret",
+      "extraSecretKeys": "أسرار إضافية",
+      "secretFingerprint": "مخزّن · ينتهي بـ {last4}",
+      "secretMissing": "غير مضبوط",
+      "updatedAt": "آخر تحديث {date}"
+    },
+    "form": {
+      "isEnabled": {
+        "label": "مفعّل",
+        "description": "إلغاء التفعيل يوقف OAuth والتحديث التلقائي دون مسح القيم المخزّنة."
+      },
+      "appId": {
+        "label": "App ID",
+        "placeholder": "من لوحة مطوّري المنصة"
+      },
+      "apiVersion": {
+        "label": "إصدار API"
+      },
+      "redirectUri": {
+        "label": "Redirect URI",
+        "hint": "لازم يكون HTTPS ومطابق حرفياً للعنوان المسجّل في لوحة المنصة. مقترح: {url}"
+      },
+      "appSecret": {
+        "label": "App secret"
+      },
+      "oauthStateSecret": {
+        "label": "OAuth state secret",
+        "hint": "سر منفصل يُستخدم لتوقيع state JWT بواسطة HMAC. توليد آمن: openssl rand -hex 32"
+      },
+      "scopes": {
+        "label": "Scopes (مفصولة بفاصلة أو مسافة)"
+      },
+      "advanced": {
+        "title": "متقدّم"
+      },
+      "secret": {
+        "existing": "مخزّن · ينتهي بـ {last4}",
+        "existingNoFingerprint": "مخزّن",
+        "placeholderKeep": "اتركه فاضي للاحتفاظ بالقيمة الحالية",
+        "placeholderEnter": "أدخل القيمة الجديدة"
+      }
+    },
+    "actions": {
+      "configure": "تهيئة",
+      "edit": "تعديل",
+      "save": "حفظ التغييرات",
+      "create": "إنشاء",
+      "cancel": "إلغاء",
+      "openDevConsole": "لوحة المطوّر"
+    }
   }
 }

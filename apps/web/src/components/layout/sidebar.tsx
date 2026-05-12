@@ -41,6 +41,12 @@ const SettingsIcon = () => (
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 );
+const PluginIcon = () => (
+  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+      d="M14 6V4a1 1 0 00-1-1h-2a1 1 0 00-1 1v2H7a2 2 0 00-2 2v4a4 4 0 004 4v3a1 1 0 001 1h4a1 1 0 001-1v-3a4 4 0 004-4V8a2 2 0 00-2-2h-3z" />
+  </svg>
+);
 const ChevronIcon = ({ collapsed }: { collapsed: boolean }) => (
   <svg className={cn('h-4 w-4 transition-transform', collapsed ? 'rotate-180' : '')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -61,7 +67,7 @@ export function Sidebar() {
   const { sidebarCollapsed, setSidebarCollapsed } = useUIStore();
   const brand = getBrand(locale);
 
-  const navItems = [
+  const navItems: Array<{ href: string; label: string; icon: React.ReactNode }> = [
     { href: '/', label: t('dashboard'), icon: <LayoutGridIcon /> },
     { href: '/campaigns', label: t('campaigns'), icon: <CampaignsIcon /> },
     { href: '/campaign-architect', label: t('campaignArchitect'), icon: <ArchitectIcon /> },
@@ -69,6 +75,9 @@ export function Sidebar() {
     { href: '/alerts', label: t('alerts'), icon: <AlertsIcon /> },
     { href: '/settings', label: t('settings'), icon: <SettingsIcon /> },
   ];
+  if (user?.isSystemAdmin) {
+    navItems.push({ href: '/settings/providers', label: t('providerConfigs'), icon: <PluginIcon /> });
+  }
 
   function handleSignOut() {
     clearTokens();
@@ -97,6 +106,8 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          aria-label={t('toggleSidebar')}
+          title={t('toggleSidebar')}
           className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
         >
           <ChevronIcon collapsed={!sidebarCollapsed} />
