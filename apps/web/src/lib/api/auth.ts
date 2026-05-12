@@ -5,6 +5,7 @@ export interface AuthUser {
   email: string;
   name: string | null;
   preferredLang: string;
+  isSystemAdmin: boolean;
 }
 
 export interface OrgRef {

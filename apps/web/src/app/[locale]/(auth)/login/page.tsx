@@ -33,7 +33,7 @@ export default function LoginPage() {
       setUser({
         sub: data.user.id,
         email: data.user.email,
-        isSystemAdmin: false,
+        isSystemAdmin: data.user.isSystemAdmin,
       });
       if (data.orgs?.[0]) {
         setActiveOrg({ id: data.orgs[0].id, name: data.orgs[0].name, slug: data.orgs[0].slug });

@@ -61,6 +61,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         preferredLang: user.preferredLang,
+        isSystemAdmin: user.isSystemAdmin,
       },
       orgs: memberships.map((m) => ({
         id: m.org.id,
