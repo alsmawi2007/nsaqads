@@ -33,6 +33,17 @@ export interface UpsertProviderConfigPayload {
   extraSecrets?: Record<string, string>;
 }
 
+// Mapping of ProviderPlatform → URL segment used by the API's provider OAuth
+// controllers. Snap, Meta, TikTok use the lowercased platform name; Google Ads
+// uses a kebab-cased path.
+const OAUTH_PATH_SEGMENT: Record<ProviderPlatform, string> = {
+  META:       'meta',
+  GOOGLE_ADS: 'google-ads',
+  SNAPCHAT:   'snapchat',
+  TIKTOK:     'tiktok',
+  TWITTER:    'twitter',
+};
+
 export const providerConfigsApi = {
   list: (): Promise<RedactedProviderConfig[]> =>
     api.get<RedactedProviderConfig[]>('/admin/provider-configs'),
@@ -57,4 +68,16 @@ export const providerConfigsApi = {
 
   remove: (platform: ProviderPlatform): Promise<void> =>
     api.delete<void>(`/admin/provider-configs/${platform}`),
+
+  // Build the platform's OAuth authorize URL for a given org. The frontend
+  // navigates the user to the returned `url`; the platform redirects back
+  // to our callback which then redirects back to the providers page with a
+  // status query.
+  oauthStart: (
+    orgId: string,
+    platform: ProviderPlatform,
+  ): Promise<{ url: string }> =>
+    api.get<{ url: string }>(
+      `/orgs/${orgId}/providers/${OAUTH_PATH_SEGMENT[platform]}/oauth/start`,
+    ),
 };

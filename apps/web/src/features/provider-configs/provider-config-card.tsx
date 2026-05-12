@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Toggle } from '@/components/ui/toggle';
+import { useAuthStore } from '@/lib/stores/auth.store';
 import {
   providerConfigsApi,
   type ProviderPlatform,
@@ -23,8 +24,10 @@ export function ProviderConfigCard({ platform, config }: ProviderConfigCardProps
   const t = useTranslations('providerConfigs');
   const meta = PLATFORM_META[platform];
   const qc = useQueryClient();
+  const { activeOrg } = useAuthStore();
   const [editing, setEditing] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   const upsert = useMutation({
     mutationFn: (payload: Parameters<typeof providerConfigsApi.upsert>[1]) =>
@@ -42,6 +45,22 @@ export function ProviderConfigCard({ platform, config }: ProviderConfigCardProps
   const toggleEnabled = useMutation({
     mutationFn: (next: boolean) => providerConfigsApi.setEnabled(platform, next),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['providerConfigs'] }),
+  });
+
+  const connect = useMutation({
+    mutationFn: () => {
+      if (!activeOrg) throw new Error('no_active_org');
+      return providerConfigsApi.oauthStart(activeOrg.id, platform);
+    },
+    onSuccess: ({ url }) => {
+      // Navigate the current window — the platform redirects back to our
+      // callback, which redirects to /settings/providers?status=connected
+      // (only when meta.redirectCallbackWired is true).
+      window.location.href = url;
+    },
+    onError: (err: { message?: string }) => {
+      setConnectError(err.message ?? 'connect_failed');
+    },
   });
 
   const isConfigured = !!config;
@@ -85,6 +104,12 @@ export function ProviderConfigCard({ platform, config }: ProviderConfigCardProps
             }}
             onToggleEnabled={(next) => toggleEnabled.mutate(next)}
             toggling={toggleEnabled.isPending}
+            onConnect={() => {
+              setConnectError(null);
+              connect.mutate();
+            }}
+            connecting={connect.isPending}
+            connectError={connectError}
           />
         )}
         {editing && (
@@ -118,10 +143,14 @@ interface SummaryViewProps {
   onEdit:          () => void;
   onToggleEnabled: (next: boolean) => void;
   toggling:        boolean;
+  onConnect:       () => void;
+  connecting:      boolean;
+  connectError:    string | null;
 }
 
 function SummaryView({
   config, platform, onEdit, onToggleEnabled, toggling,
+  onConnect, connecting, connectError,
 }: SummaryViewProps) {
   const t = useTranslations('providerConfigs');
   const suggested = suggestRedirectUri(platform);
@@ -212,12 +241,19 @@ function SummaryView({
         </div>
       )}
 
+      {/* Connect error */}
+      {connectError && (
+        <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-900/30 dark:text-red-300">
+          {t('connect.error', { message: connectError })}
+        </p>
+      )}
+
       {/* Actions */}
-      <div className="flex items-center justify-between gap-2 pt-1">
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
         <p className="text-xs text-slate-400 dark:text-slate-500">
           {t('summary.updatedAt', { date: new Date(config.updatedAt).toLocaleString() })}
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {meta.docsUrl && (
             <a
               href={meta.docsUrl}
@@ -231,6 +267,16 @@ function SummaryView({
           <Button variant="outline" size="sm" onClick={onEdit}>
             {t('actions.edit')}
           </Button>
+          {config.isEnabled && config.hasAppSecret && meta.redirectCallbackWired && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={onConnect}
+              loading={connecting}
+            >
+              {t('actions.connectAccount')}
+            </Button>
+          )}
         </div>
       </div>
     </div>

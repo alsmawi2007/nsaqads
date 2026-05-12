@@ -560,7 +560,17 @@
       "save": "Save changes",
       "create": "Create config",
       "cancel": "Cancel",
-      "openDevConsole": "Developer console"
+      "openDevConsole": "Developer console",
+      "connectAccount": "Connect account"
+    },
+    "connect": {
+      "error": "Could not start OAuth: {message}"
+    },
+    "callback": {
+      "successTitle": "{platform} connected",
+      "successBody": "{count, plural, =0 {No ad accounts were linked — the authenticated Snap user has no manageable accounts.} =1 {1 ad account is now linked to this organization. Tokens are encrypted at rest and will refresh automatically.} other {# ad accounts are now linked to this organization. Tokens are encrypted at rest and will refresh automatically.}}",
+      "errorTitle": "{platform} connection failed",
+      "dismiss": "Dismiss"
     }
   }
 }
