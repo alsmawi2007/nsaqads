@@ -47,6 +47,12 @@ const PluginIcon = () => (
       d="M14 6V4a1 1 0 00-1-1h-2a1 1 0 00-1 1v2H7a2 2 0 00-2 2v4a4 4 0 004 4v3a1 1 0 001 1h4a1 1 0 001-1v-3a4 4 0 004-4V8a2 2 0 00-2-2h-3z" />
   </svg>
 );
+const MembersIcon = () => (
+  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+      d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6 5.87a4 4 0 00-8 0M16 7a4 4 0 11-8 0 4 4 0 018 0zm6 3a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
 const ChevronIcon = ({ collapsed }: { collapsed: boolean }) => (
   <svg className={cn('h-4 w-4 transition-transform', collapsed ? 'rotate-180' : '')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -75,6 +81,11 @@ export function Sidebar() {
     { href: '/alerts', label: t('alerts'), icon: <AlertsIcon /> },
     { href: '/settings', label: t('settings'), icon: <SettingsIcon /> },
   ];
+  // Members link is visible to every org member; permissions on the page
+  // itself decide what each role can actually do.
+  if (activeOrg) {
+    navItems.push({ href: '/settings/members', label: t('members'), icon: <MembersIcon /> });
+  }
   if (user?.isSystemAdmin) {
     navItems.push({ href: '/settings/providers', label: t('providerConfigs'), icon: <PluginIcon /> });
   }

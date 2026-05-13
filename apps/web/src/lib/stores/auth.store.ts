@@ -7,10 +7,13 @@ interface User {
   isSystemAdmin: boolean;
 }
 
+export type MemberRole = 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER';
+
 interface OrgContext {
   id: string;
   name: string;
   slug: string;
+  role: MemberRole;
 }
 
 interface AuthState {

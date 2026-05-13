@@ -36,7 +36,13 @@ export default function LoginPage() {
         isSystemAdmin: data.user.isSystemAdmin,
       });
       if (data.orgs?.[0]) {
-        setActiveOrg({ id: data.orgs[0].id, name: data.orgs[0].name, slug: data.orgs[0].slug });
+        const first = data.orgs[0];
+        setActiveOrg({
+          id:   first.id,
+          name: first.name,
+          slug: first.slug,
+          role: first.role as 'OWNER' | 'ADMIN' | 'MEMBER' | 'VIEWER',
+        });
       }
       router.push(`/${locale}`);
     } catch {

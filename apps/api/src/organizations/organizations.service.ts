@@ -2,11 +2,14 @@ import {
   Injectable, NotFoundException, ConflictException, ForbiddenException,
 } from '@nestjs/common';
 import { MemberRole } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { CreateOrgDto } from './dto/create-org.dto';
 import { InviteMemberDto } from './dto/invite-member.dto';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+
+const BCRYPT_ROUNDS = 10;
 
 @Injectable()
 export class OrganizationsService {
@@ -71,26 +74,56 @@ export class OrganizationsService {
   }
 
   async inviteMember(orgId: string, invitedById: string, dto: InviteMemberDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
-    if (!user) throw new NotFoundException('User with that email not found');
+    // Promotion to OWNER through the invite path would let any ADMIN take
+    // over the org. The dedicated transfer-ownership flow is the only
+    // legitimate way to seat a new OWNER.
+    if (dto.role === MemberRole.OWNER) {
+      throw new ForbiddenException('Cannot invite a member as OWNER. Use transfer-ownership instead.');
+    }
 
-    const existing = await this.prisma.membership.findUnique({
-      where: { orgId_userId: { orgId, userId: user.id } },
+    const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email } });
+
+    let userId: string;
+    let createdNewUser = false;
+    if (existingUser) {
+      userId = existingUser.id;
+    } else {
+      // Brand-new user: require a password from the inviting admin so we
+      // can seat an actual account. Without a password we keep the old
+      // behavior (404) so callers aren't surprised.
+      if (!dto.password) {
+        throw new NotFoundException('User with that email not found. Provide a password to create the account.');
+      }
+      const passwordHash = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
+      const created = await this.prisma.user.create({
+        data: {
+          email: dto.email,
+          passwordHash,
+          name: dto.name ?? null,
+          isActive: true,
+        },
+      });
+      userId = created.id;
+      createdNewUser = true;
+    }
+
+    const existingMembership = await this.prisma.membership.findUnique({
+      where: { orgId_userId: { orgId, userId } },
     });
-    if (existing) throw new ConflictException('User is already a member');
+    if (existingMembership) throw new ConflictException('User is already a member');
 
     const membership = await this.prisma.membership.create({
-      data: { orgId, userId: user.id, role: dto.role, invitedById, joinedAt: new Date() },
+      data: { orgId, userId, role: dto.role, invitedById, joinedAt: new Date() },
     });
 
     await this.audit.log({
       orgId, userId: invitedById,
       action: 'membership.invite',
       resourceType: 'Membership', resourceId: membership.id,
-      afterState: { email: dto.email, role: dto.role },
+      afterState: { email: dto.email, role: dto.role, createdNewUser },
     });
 
-    return membership;
+    return { membership, createdNewUser };
   }
 
   async updateMemberRole(orgId: string, targetUserId: string, requesterId: string, dto: UpdateMemberRoleDto) {

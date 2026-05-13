@@ -35,6 +35,7 @@
     "alerts": "Alerts",
     "settings": "Settings",
     "providerConfigs": "Provider Configs",
+    "members": "Members",
     "signOut": "Sign Out",
     "toggleSidebar": "Toggle sidebar"
   },
@@ -571,6 +572,49 @@
       "successBody": "{count, plural, =0 {No ad accounts were linked — the authenticated Snap user has no manageable accounts.} =1 {1 ad account is now linked to this organization. Tokens are encrypted at rest and will refresh automatically.} other {# ad accounts are now linked to this organization. Tokens are encrypted at rest and will refresh automatically.}}",
       "errorTitle": "{platform} connection failed",
       "dismiss": "Dismiss"
+    }
+  },
+  "members": {
+    "title": "Members",
+    "subtitle": "Users with access to {org}.",
+    "addMember": "Add member",
+    "confirmRemove": "Remove {email} from this organization? They will lose access immediately.",
+    "table": {
+      "user": "User",
+      "role": "Role",
+      "joined": "Joined",
+      "actions": "Actions",
+      "remove": "Remove",
+      "you": "(you)"
+    },
+    "toast": {
+      "createdNew": "{email} added — a new user account was created with the password you set.",
+      "added": "{email} added to this organization."
+    },
+    "invite": {
+      "title": "Invite a new member",
+      "email": "Email",
+      "name": "Name (optional)",
+      "namePlaceholder": "How they should appear in the UI",
+      "role": "Role",
+      "setPasswordToggle": "Create a new user account",
+      "setPasswordHint": "Required when this email has never signed in. You'll share the password with them manually.",
+      "password": "Initial password",
+      "passwordPlaceholder": "At least 8 characters",
+      "passwordTooShort": "Minimum 8 characters",
+      "submit": "Add member",
+      "cancel": "Cancel",
+      "roles": {
+        "OWNER":  "Owner",
+        "ADMIN":  "Admin",
+        "MEMBER": "Member (campaign manager)",
+        "VIEWER": "Viewer (read-only)"
+      },
+      "roleHint": {
+        "ADMIN":  "Full control inside this org: providers, optimizer, members, settings.",
+        "MEMBER": "Campaign manager — can view dashboards, manage campaigns, sync ad accounts. Cannot manage members or change org settings.",
+        "VIEWER": "Read-only access to dashboards and campaigns. No mutations."
+      }
     }
   }
 }
