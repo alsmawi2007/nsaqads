@@ -36,6 +36,7 @@
     "settings": "Settings",
     "providerConfigs": "Provider Configs",
     "members": "Members",
+    "adAccounts": "Ad Accounts",
     "signOut": "Sign Out",
     "toggleSidebar": "Toggle sidebar"
   },
@@ -570,6 +571,46 @@
     "callback": {
       "successTitle": "{platform} connected",
       "successBody": "{count, plural, =0 {No ad accounts were linked — the authenticated Snap user has no manageable accounts.} =1 {1 ad account is now linked to this organization. Tokens are encrypted at rest and will refresh automatically.} other {# ad accounts are now linked to this organization. Tokens are encrypted at rest and will refresh automatically.}}",
+      "errorTitle": "{platform} connection failed",
+      "dismiss": "Dismiss"
+    }
+  },
+  "adAccounts": {
+    "title": "Ad Accounts",
+    "subtitle": "Ad accounts linked to {org}. The Campaign Architect lets you launch new campaigns into any account listed here.",
+    "viewerHint": "Read-only access. Ask an admin to connect a new platform.",
+    "status": {
+      "ACTIVE":   "Active",
+      "INACTIVE": "Inactive",
+      "ERROR":    "Error",
+      "EXPIRED":  "Token expired",
+      "MOCK":     "Demo data"
+    },
+    "summary": {
+      "currency": "Currency",
+      "timezone": "Timezone",
+      "tokenExpires": "Token expires"
+    },
+    "actions": {
+      "sync":       "Sync campaigns",
+      "disconnect": "Disconnect"
+    },
+    "confirmDisconnect": "Disconnect {name}? The encrypted tokens will be deleted and no further API calls will be made to this account.",
+    "connected": {
+      "title": "{count, plural, =0 {No connected accounts yet} =1 {1 connected account} other {# connected accounts}}",
+      "empty": "Once you connect a platform below, your ad accounts will appear here. The Campaign Architect needs at least one account to launch a campaign."
+    },
+    "connect": {
+      "sectionTitle": "Connect a new platform",
+      "sectionHint": "Authorize Nasaq Ads to read campaign metrics and propose optimizations on your behalf. Only platforms wired into this build are listed.",
+      "readyHint": "Click Connect — you'll be redirected to the platform's official login.",
+      "comingSoon": "Configuration UI ready, OAuth handler not wired yet.",
+      "action": "Connect",
+      "unavailable": "Coming soon"
+    },
+    "callback": {
+      "successTitle": "{platform} connected",
+      "successBody": "{count, plural, =0 {No ad accounts were linked — the authenticated platform user has no manageable accounts.} =1 {1 ad account is now linked. Tokens are encrypted at rest and refresh automatically.} other {# ad accounts are now linked. Tokens are encrypted at rest and refresh automatically.}}",
       "errorTitle": "{platform} connection failed",
       "dismiss": "Dismiss"
     }

@@ -50,13 +50,17 @@ export class SnapchatOAuthController {
     @Res() res: Response,
   ): Promise<void> {
     const webBase = this.webAppBaseUrl();
+    // Redirect to /ad-accounts because that's the natural place to see the
+    // result — the org user's connected accounts. System admins testing
+    // from /settings/providers still get useful confirmation there because
+    // the new account shows up in the list either way.
     try {
       const result = await this.oauth.handleCallback(code, state);
-      const url = `${webBase}/settings/providers?status=connected&platform=snapchat&accounts=${result.accountsConnected}`;
+      const url = `${webBase}/ad-accounts?status=connected&platform=snapchat&accounts=${result.accountsConnected}`;
       res.redirect(302, url);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'oauth_failed';
-      const url = `${webBase}/settings/providers?status=error&platform=snapchat&message=${encodeURIComponent(message)}`;
+      const url = `${webBase}/ad-accounts?status=error&platform=snapchat&message=${encodeURIComponent(message)}`;
       res.redirect(302, url);
     }
   }

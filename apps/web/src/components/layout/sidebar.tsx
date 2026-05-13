@@ -53,6 +53,12 @@ const MembersIcon = () => (
       d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6 5.87a4 4 0 00-8 0M16 7a4 4 0 11-8 0 4 4 0 018 0zm6 3a3 3 0 11-6 0 3 3 0 016 0z" />
   </svg>
 );
+const LinkIcon = () => (
+  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+      d="M13.828 10.172a4 4 0 015.656 5.656l-3 3a4 4 0 01-5.656-5.656m-1.656-4l3-3a4 4 0 015.656 5.656l-1.5 1.5" />
+  </svg>
+);
 const ChevronIcon = ({ collapsed }: { collapsed: boolean }) => (
   <svg className={cn('h-4 w-4 transition-transform', collapsed ? 'rotate-180' : '')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -77,6 +83,7 @@ export function Sidebar() {
     { href: '/', label: t('dashboard'), icon: <LayoutGridIcon /> },
     { href: '/campaigns', label: t('campaigns'), icon: <CampaignsIcon /> },
     { href: '/campaign-architect', label: t('campaignArchitect'), icon: <ArchitectIcon /> },
+    { href: '/ad-accounts', label: t('adAccounts'), icon: <LinkIcon /> },
     { href: '/optimizer', label: t('optimizer'), icon: <OptimizerIcon /> },
     { href: '/alerts', label: t('alerts'), icon: <AlertsIcon /> },
     { href: '/settings', label: t('settings'), icon: <SettingsIcon /> },
