@@ -1,27 +1,22 @@
 import {
-  Controller, Get, Param, Query, UseGuards,
+  Controller, Get, Param, Query, Res, UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { MemberRole } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { OrgMemberGuard } from '../../common/guards/org-member.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { GoogleAdsOAuthService } from './google-ads-oauth.service';
-
-// Two routes:
-//   GET /orgs/:orgId/providers/google-ads/oauth/start  — auth'd; returns the
-//                                                       Google authorize URL
-//                                                       with a signed state JWT.
-//   GET /providers/google-ads/oauth/callback — PUBLIC; the redirect target
-//                                              hit by Google. State signature
-//                                              is the only auth.
+import { oauthSuccessRedirect, oauthErrorRedirect } from '../shared/oauth-redirect';
 
 @ApiTags('Providers — Google Ads OAuth')
 @Controller()
 export class GoogleAdsOAuthController {
-  constructor(private oauth: GoogleAdsOAuthService) {}
+  constructor(private oauth: GoogleAdsOAuthService, private config: ConfigService) {}
 
   @Get('orgs/:orgId/providers/google-ads/oauth/start')
   @ApiBearerAuth()
@@ -36,14 +31,20 @@ export class GoogleAdsOAuthController {
   }
 
   @Get('providers/google-ads/oauth/callback')
-  @ApiOperation({ summary: 'Google Ads OAuth redirect target. State JWT is the only auth.' })
+  @ApiOperation({ summary: 'Google Ads OAuth redirect target. State JWT is the only auth. Redirects to /ad-accounts on success/error.' })
   @ApiQuery({ name: 'code', required: true })
   @ApiQuery({ name: 'state', required: true })
   async callback(
     @Query('code') code: string,
     @Query('state') state: string,
-  ): Promise<{ orgId: string; accountsConnected: number }> {
-    const result = await this.oauth.handleCallback(code, state);
-    return { orgId: result.orgId, accountsConnected: result.accountsConnected };
+    @Res() res: Response,
+  ): Promise<void> {
+    try {
+      const result = await this.oauth.handleCallback(code, state);
+      res.redirect(302, oauthSuccessRedirect(this.config, 'GOOGLE_ADS', result.accountsConnected));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'oauth_failed';
+      res.redirect(302, oauthErrorRedirect(this.config, 'GOOGLE_ADS', message));
+    }
   }
 }

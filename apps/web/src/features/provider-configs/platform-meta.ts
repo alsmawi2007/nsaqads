@@ -43,7 +43,7 @@ export const PLATFORM_META: Record<Exclude<ProviderPlatform, 'TWITTER'>, Platfor
     callbackPath:          '/api/v1/providers/meta/oauth/callback',
     docsUrl:               'https://developers.facebook.com/apps',
     implemented:           true,
-    redirectCallbackWired: false,
+    redirectCallbackWired: true,
   },
   GOOGLE_ADS: {
     platform:              'GOOGLE_ADS',
@@ -60,7 +60,7 @@ export const PLATFORM_META: Record<Exclude<ProviderPlatform, 'TWITTER'>, Platfor
     callbackPath:          '/api/v1/providers/google-ads/oauth/callback',
     docsUrl:               'https://console.cloud.google.com/apis/credentials',
     implemented:           true,
-    redirectCallbackWired: false,
+    redirectCallbackWired: true,
   },
   SNAPCHAT: {
     platform:              'SNAPCHAT',
@@ -87,7 +87,7 @@ export const PLATFORM_META: Record<Exclude<ProviderPlatform, 'TWITTER'>, Platfor
     docsUrl:               'https://business-api.tiktok.com',
     notes:                 'TikTok scopes are configured at the app level. Leave scopes empty here.',
     implemented:           true,
-    redirectCallbackWired: false,
+    redirectCallbackWired: true,
   },
   TWITTER: {
     platform:              'TWITTER',
