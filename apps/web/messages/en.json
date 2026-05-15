@@ -37,6 +37,7 @@
     "providerConfigs": "Provider Configs",
     "members": "Members",
     "adAccounts": "Ad Accounts",
+    "activationLab": "Activation Lab",
     "signOut": "Sign Out",
     "toggleSidebar": "Toggle sidebar"
   },
@@ -115,7 +116,31 @@
     "status_active": "Active",
     "status_paused": "Paused",
     "status_archived": "Archived",
-    "status_deleted": "Deleted"
+    "status_deleted": "Deleted",
+    "budgetSource_campaign-daily":    "Campaign daily",
+    "budgetSource_campaign-lifetime": "Campaign lifetime",
+    "budgetSource_ad-set":            "Ad-set budgets",
+    "budgetSource_unknown":           "Unknown",
+    "budgetSource_lifetime_tag":      "lifetime",
+    "phaseOverride": {
+      "title": "Phase Override",
+      "warning": "Testing only. Manually moving a campaign between phases bypasses the optimizer's automatic transition logic. Production transitions happen as the campaign accumulates metrics — only use this when validating the activation pipeline.",
+      "testingOnly": "Testing",
+      "newPhase": "New phase",
+      "reasonLabel": "Reason (audit-logged)",
+      "reasonPlaceholder": "e.g. activation test — lift out of LEARNING to verify optimizer reaches this campaign",
+      "reasonTooShort": "Minimum 3 characters — this is recorded in the audit log.",
+      "apply": "Apply override",
+      "current": "Current phase: {phase}",
+      "savedAt": "Saved at {time}",
+      "adminOnly": "ADMIN+ only",
+      "phase": {
+        "LEARNING": "Learning",
+        "STABLE":   "Stable",
+        "SCALING":  "Scaling",
+        "DEGRADED": "Degraded"
+      }
+    }
   },
   "optimizer": {
     "title": "Optimizer Actions",
@@ -638,6 +663,64 @@
       "bulkHint":    "Imported accounts start untracked. Pick the ones you care about before the cron fans out.",
       "errorTitle": "{platform} connection failed",
       "dismiss": "Dismiss"
+    }
+  },
+  "activationLab": {
+    "title": "Provider Activation Lab",
+    "subtitle": "Live status of Snapchat (and the other ad platforms) inside {org}. Use this panel during integration testing to drive sync, ingestion, and the readiness checklist from the UI.",
+    "refresh": "Refresh",
+    "adminOnly": "ADMIN+",
+    "generatedAt": "Snapshot generated {when}",
+    "checklist": {
+      "title": "Ready Checklist",
+      "status": {
+        "ok": "OK",
+        "warn": "Warning",
+        "missing": "Missing"
+      },
+      "items": {
+        "providerConnected":        "Provider connected",
+        "adAccountTracked":         "Ad account tracked",
+        "campaignsSynced":          "Campaigns synced",
+        "activeCampaigns":          "Active campaigns detected",
+        "campaignPhaseEligible":    "Campaign phase eligible",
+        "metricSnapshotsAvailable": "Metric snapshots available",
+        "optimizerRulesAvailable":  "Optimizer rules loaded",
+        "autoApplyDisabled":        "Auto-apply is off"
+      }
+    },
+    "ingestion": {
+      "title": "Manual ingestion",
+      "body": "Run metrics ingestion for this org right now, without waiting for the hourly cron. Idempotent — campaigns whose 24h/48h/72h snapshots already exist for the day are skipped.",
+      "runNow": "Run ingestion now",
+      "lastRun": "Last cron run: {when} — {summary}",
+      "snapshots": "{count, plural, =0 {No snapshots in the last 24h} =1 {1 snapshot in the last 24h} other {# snapshots in the last 24h}}",
+      "lastRunHeading": "Ingestion complete",
+      "lastRunDetail": "{ok} ok · {failed} failed · {skipped} skipped · {duration}ms"
+    },
+    "cards": {
+      "providers":        "Providers",
+      "providerEnabled":  "Enabled",
+      "providerDisabled": "Disabled",
+      "providerNotConfigured": "Not configured",
+      "adAccounts": "Ad accounts",
+      "tracked":    "Tracked",
+      "total":      "Total",
+      "manageAdAccounts": "Manage ad accounts",
+      "campaigns": "Campaigns",
+      "synced":   "Synced",
+      "eligible": "Eligible",
+      "adSets": "Ad sets",
+      "totalAdSets": "Total",
+      "optimizer": "Optimizer",
+      "rules":     "Rules loaded",
+      "autoApply": "Auto-apply",
+      "cooldownActive": "In cooldown",
+      "on":  "On",
+      "off": "Off",
+      "snapshots": "Metric snapshots",
+      "snapshots24h": "In last 24h",
+      "lastIngest": "Last ingestion {when}"
     }
   },
   "members": {

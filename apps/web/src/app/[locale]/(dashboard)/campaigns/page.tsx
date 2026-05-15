@@ -12,7 +12,7 @@ import { FullPageSpinner } from '@/components/ui/spinner';
 import { ErrorState } from '@/components/ui/error-state';
 import { PlatformBadge } from '@/components/shared/platform-badge';
 import { useAuthStore } from '@/lib/stores/auth.store';
-import { campaignsApi, type Campaign } from '@/lib/api/campaigns';
+import { campaignsApi, budgetSourceLabel, type Campaign } from '@/lib/api/campaigns';
 import { formatCurrency, formatRelativeTime } from '@/lib/utils/format';
 import { Link } from '@/lib/i18n/navigation';
 import type { ReactNode } from 'react';
@@ -81,7 +81,28 @@ export default function CampaignsPage() {
     {
       key: 'dailyBudget',
       header: t('dailyBudget'),
-      cell: (row) => row.dailyBudget ? formatCurrency(row.dailyBudget, locale, 'SAR') : '—',
+      cell: (row) => {
+        // Snap/TikTok/Google often expose budgets at the ad-set level; the
+        // campaign row's daily_budget is null there. Show where the budget
+        // actually lives so the user doesn't think the data is missing.
+        const source = budgetSourceLabel(row);
+        if (source === 'campaign-daily' && row.dailyBudget) {
+          return formatCurrency(row.dailyBudget, locale, 'SAR');
+        }
+        if (source === 'campaign-lifetime' && row.lifetimeBudget) {
+          return (
+            <span title={t('budgetSource_campaign-lifetime')}>
+              {formatCurrency(row.lifetimeBudget, locale, 'SAR')}
+              <span className="ms-1 text-[10px] uppercase tracking-wider text-slate-400">{t('budgetSource_lifetime_tag')}</span>
+            </span>
+          );
+        }
+        return (
+          <span className="text-xs text-slate-400 dark:text-slate-500" title={t(`budgetSource_${source}` as Parameters<typeof t>[0])}>
+            {t(`budgetSource_${source}` as Parameters<typeof t>[0])}
+          </span>
+        );
+      },
     },
     {
       key: 'status',

@@ -91,4 +91,19 @@ export const campaignsApi = {
     api.get<MetricSnapshot>(
       `/orgs/${orgId}/campaigns/${campaignId}/adsets/${adSetId}/metrics?window=${window}`,
     ),
+
+  // Testing override — moves a campaign between optimizer phases. Production
+  // transitions happen automatically; this is for activation testing.
+  setPhase: (orgId: string, campaignId: string, phase: CampaignPhase, reason: string) =>
+    api.patch<Campaign>(`/orgs/${orgId}/campaigns/${campaignId}/phase`, { phase, reason }),
 };
+
+// Derive a human-readable budget source from a Campaign row. Snap, TikTok,
+// and Google often expose budgets at the ad-set/ad-group level instead of
+// the campaign, so a plain "—" is misleading.
+export function budgetSourceLabel(c: Campaign): 'campaign-daily' | 'campaign-lifetime' | 'ad-set' | 'unknown' {
+  if (c.dailyBudget !== null && c.dailyBudget !== undefined && c.dailyBudget !== '0' && Number(c.dailyBudget) > 0) return 'campaign-daily';
+  if (c.lifetimeBudget !== null && c.lifetimeBudget !== undefined && c.lifetimeBudget !== '0' && Number(c.lifetimeBudget) > 0) return 'campaign-lifetime';
+  if (c.isCbo === false) return 'ad-set';
+  return 'unknown';
+}

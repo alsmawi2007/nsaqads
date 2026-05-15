@@ -21,6 +21,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
 import { CampaignArchitectModule } from './campaign-architect/campaign-architect.module';
 import { HistoricalLearningModule } from './historical-learning/historical-learning.module';
+import { ActivationLabModule } from './activation-lab/activation-lab.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { HistoricalLearningModule } from './historical-learning/historical-learn
     HealthModule,
     HistoricalLearningModule,
     CampaignArchitectModule,
+    ActivationLabModule,
   ],
 })
 export class AppModule {}

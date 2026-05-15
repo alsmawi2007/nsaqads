@@ -37,6 +37,7 @@
     "providerConfigs": "إعدادات المزودين",
     "members": "الأعضاء",
     "adAccounts": "الحسابات الإعلانية",
+    "activationLab": "مختبر التفعيل",
     "signOut": "تسجيل الخروج",
     "toggleSidebar": "طي/توسيع الشريط الجانبي"
   },
@@ -115,7 +116,31 @@
     "status_active": "نشطة",
     "status_paused": "موقوفة",
     "status_archived": "مؤرشفة",
-    "status_deleted": "محذوفة"
+    "status_deleted": "محذوفة",
+    "budgetSource_campaign-daily":    "ميزانية يومية للحملة",
+    "budgetSource_campaign-lifetime": "ميزانية كاملة للحملة",
+    "budgetSource_ad-set":            "ميزانيات على مستوى المجموعات",
+    "budgetSource_unknown":           "غير معروف",
+    "budgetSource_lifetime_tag":      "كلية",
+    "phaseOverride": {
+      "title": "تجاوز مرحلة الحملة",
+      "warning": "للاختبار فقط. تغيير المرحلة يدوياً يتجاوز منطق الانتقال التلقائي في المحسّن. الانتقالات الإنتاجية تتم تلقائياً مع تراكم المقاييس — استخدم هذا فقط للتحقق من خط أنابيب التفعيل.",
+      "testingOnly": "اختبار",
+      "newPhase": "المرحلة الجديدة",
+      "reasonLabel": "السبب (يُسجَّل)",
+      "reasonPlaceholder": "مثال: اختبار تفعيل — إخراج الحملة من LEARNING للتأكد إن المحسّن يصلها",
+      "reasonTooShort": "3 أحرف على الأقل — يُسجَّل في سجل التدقيق.",
+      "apply": "تطبيق التجاوز",
+      "current": "المرحلة الحالية: {phase}",
+      "savedAt": "حُفظ في {time}",
+      "adminOnly": "ADMIN+ فقط",
+      "phase": {
+        "LEARNING": "Learning",
+        "STABLE":   "Stable",
+        "SCALING":  "Scaling",
+        "DEGRADED": "Degraded"
+      }
+    }
   },
   "optimizer": {
     "title": "إجراءات المحسّن",
@@ -638,6 +663,64 @@
       "bulkHint":    "الحسابات المُجلَبة تبدأ بدون متابعة. اختر اللي يهمك قبل ما الـcron ينتشر عليها.",
       "errorTitle": "فشل ربط {platform}",
       "dismiss": "إغلاق"
+    }
+  },
+  "activationLab": {
+    "title": "مختبر التفعيل",
+    "subtitle": "حالة Snapchat (وبقية المنصات) المباشرة داخل {org}. استخدم هذه اللوحة أثناء اختبار التفعيل لتشغيل المزامنة والـingestion وقائمة الجاهزية من الواجهة مباشرة.",
+    "refresh": "تحديث",
+    "adminOnly": "ADMIN+",
+    "generatedAt": "أُخذت اللقطة {when}",
+    "checklist": {
+      "title": "قائمة الجاهزية",
+      "status": {
+        "ok": "تمام",
+        "warn": "تحذير",
+        "missing": "ناقص"
+      },
+      "items": {
+        "providerConnected":        "ربط المزود",
+        "adAccountTracked":         "تفعيل حساب إعلاني",
+        "campaignsSynced":          "مزامنة الحملات",
+        "activeCampaigns":          "حملات نشطة",
+        "campaignPhaseEligible":    "مرحلة حملة مؤهَّلة",
+        "metricSnapshotsAvailable": "لقطات مقاييس متوفّرة",
+        "optimizerRulesAvailable":  "قواعد المحسّن محمّلة",
+        "autoApplyDisabled":        "AUTO_APPLY مغلق"
+      }
+    },
+    "ingestion": {
+      "title": "تشغيل ingestion يدوي",
+      "body": "شغّل metrics ingestion للمنظمة الآن بدون انتظار الـcron الساعي. Idempotent — الحملات اللي عندها لقطات اليوم تُتخطّى تلقائياً.",
+      "runNow": "شغّل الآن",
+      "lastRun": "آخر تشغيل cron: {when} — {summary}",
+      "snapshots": "{count, plural, =0 {لا توجد لقطات في آخر 24 ساعة} =1 {لقطة واحدة في آخر 24 ساعة} other {# لقطة في آخر 24 ساعة}}",
+      "lastRunHeading": "اكتمل الـingestion",
+      "lastRunDetail": "{ok} نجاح · {failed} فشل · {skipped} مُتخطّى · {duration}ms"
+    },
+    "cards": {
+      "providers":        "المزوّدون",
+      "providerEnabled":  "مفعّل",
+      "providerDisabled": "معطّل",
+      "providerNotConfigured": "غير مهيّأ",
+      "adAccounts": "الحسابات الإعلانية",
+      "tracked":    "متابَع",
+      "total":      "الإجمالي",
+      "manageAdAccounts": "إدارة الحسابات",
+      "campaigns": "الحملات",
+      "synced":   "تمت المزامنة",
+      "eligible": "مؤهَّلة",
+      "adSets": "المجموعات الإعلانية",
+      "totalAdSets": "الإجمالي",
+      "optimizer": "المحسّن",
+      "rules":     "القواعد",
+      "autoApply": "AUTO_APPLY",
+      "cooldownActive": "في cooldown",
+      "on":  "مفعّل",
+      "off": "متوقّف",
+      "snapshots": "لقطات المقاييس",
+      "snapshots24h": "في آخر 24 ساعة",
+      "lastIngest": "آخر ingestion {when}"
     }
   },
   "members": {

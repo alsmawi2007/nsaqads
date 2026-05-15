@@ -6,12 +6,13 @@ import { MetricsIngestionRunnerService } from './metrics-ingestion-runner.servic
 import { MetricsIngestionScheduler } from './metrics-ingestion.scheduler';
 import { MetricsIngestionObservabilityService } from './metrics-ingestion-observability.service';
 import { MetricsAdminController } from './admin/metrics-admin.controller';
+import { MetricsOrgController } from './metrics-org.controller';
 import { ProvidersModule } from '../providers/providers.module';
 import { AdminModule } from '../admin/admin.module';
 
 @Module({
   imports: [ScheduleModule.forRoot(), ProvidersModule, AdminModule],
-  controllers: [MetricsAdminController],
+  controllers: [MetricsAdminController, MetricsOrgController],
   providers: [
     MetricsService,
     MetricsIngestionService,

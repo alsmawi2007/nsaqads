@@ -2,7 +2,8 @@ import {
   Controller, Get, Patch, Body, Param, UseGuards, Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
-import { MemberRole, OptimizerMode } from '@prisma/client';
+import { IsEnum, IsString, MinLength } from 'class-validator';
+import { CampaignPhase, MemberRole, OptimizerMode } from '@prisma/client';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OrgMemberGuard } from '../common/guards/org-member.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
@@ -10,6 +11,14 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { CampaignsService } from './campaigns.service';
 import { MetricsService } from '../metrics/metrics.service';
+
+class PhaseOverrideDto {
+  @IsEnum(CampaignPhase)
+  phase!: CampaignPhase;
+
+  @IsString() @MinLength(3)
+  reason!: string;
+}
 
 @ApiTags('Campaigns')
 @ApiBearerAuth()
@@ -52,6 +61,26 @@ export class CampaignsController {
     @CurrentUser() user: { sub: string },
   ) {
     return this.campaigns.updateOptimizerSettings(campaignId, orgId, user.sub, body);
+  }
+
+  @Patch(':campaignId/phase')
+  @UseGuards(RolesGuard)
+  @Roles(MemberRole.ADMIN)
+  @ApiOperation({
+    summary: 'Testing override — move a campaign between optimizer phases (ADMIN+).',
+    description:
+      'Manual phase change for QA / activation testing. Production transitions ' +
+      'happen automatically inside the optimizer pipeline; this endpoint exists ' +
+      'so a freshly-synced campaign can be lifted out of LEARNING to verify the ' +
+      'optimizer evaluates it. Each call is recorded in audit_logs with the reason.',
+  })
+  setPhase(
+    @Param('orgId') orgId: string,
+    @Param('campaignId') campaignId: string,
+    @Body() dto: PhaseOverrideDto,
+    @CurrentUser() user: { sub: string },
+  ) {
+    return this.campaigns.setPhase(campaignId, orgId, user.sub, dto.phase, dto.reason);
   }
 
   @Get(':campaignId/metrics')

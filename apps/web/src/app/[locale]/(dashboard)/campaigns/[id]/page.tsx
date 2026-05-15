@@ -12,9 +12,10 @@ import { ErrorState } from '@/components/ui/error-state';
 import { KPICard } from '@/components/shared/kpi-card';
 import { PlatformBadge } from '@/components/shared/platform-badge';
 import { useAuthStore } from '@/lib/stores/auth.store';
-import { campaignsApi } from '@/lib/api/campaigns';
+import { campaignsApi, budgetSourceLabel } from '@/lib/api/campaigns';
 import { formatCurrency, formatNumber, formatPercent, formatRoas } from '@/lib/utils/format';
 import { Link } from '@/lib/i18n/navigation';
+import { PhaseOverridePanel } from '@/features/campaigns/phase-override';
 
 // ─── Badge variant maps ───────────────────────────────────────────────────────
 
@@ -119,6 +120,16 @@ export default function CampaignDetailPage() {
           <KPICard title={t('ctr')}         value={formatPercent(m.ctr,          locale)} />
         </div>
       ) : null}
+
+      {/* ── Phase Override (testing) ──────────────────────────────────────── */}
+      {activeOrg && (
+        <PhaseOverridePanel
+          orgId={activeOrg.id}
+          campaignId={campaign.id}
+          currentPhase={campaign.campaignPhase}
+          canManage={activeOrg.role === 'OWNER' || activeOrg.role === 'ADMIN'}
+        />
+      )}
 
       {/* ── Ad Sets ───────────────────────────────────────────────────────── */}
       <Card>

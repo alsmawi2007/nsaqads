@@ -52,6 +52,35 @@ export class CampaignsService {
     return updated;
   }
 
+  // Testing override: lets ADMIN move a campaign between optimizer phases.
+  // Real production transitions happen automatically inside the optimizer
+  // pipeline (LEARNING → STABLE once thresholds are met). This endpoint is
+  // here so QA can take a freshly-synced campaign out of LEARNING to verify
+  // the optimizer reaches it, without faking the underlying metrics.
+  //
+  // Audited with the user-supplied reason so the override is traceable.
+  async setPhase(
+    id: string,
+    orgId: string,
+    userId: string,
+    phase: CampaignPhase,
+    reason: string,
+  ) {
+    const before = await this.findOne(id, orgId);
+    const updated = await this.prisma.campaign.update({
+      where: { id },
+      data:  { campaignPhase: phase, phaseUpdatedAt: new Date() },
+    });
+    await this.audit.log({
+      orgId, userId,
+      action: 'campaign.phase_override',
+      resourceType: 'Campaign', resourceId: id,
+      beforeState: { campaignPhase: before.campaignPhase },
+      afterState:  { campaignPhase: phase, reason },
+    });
+    return updated;
+  }
+
   async getAdSets(campaignId: string, orgId: string) {
     return this.prisma.adSet.findMany({
       where: { campaignId, orgId },

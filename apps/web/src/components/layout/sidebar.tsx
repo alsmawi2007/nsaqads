@@ -59,6 +59,12 @@ const LinkIcon = () => (
       d="M13.828 10.172a4 4 0 015.656 5.656l-3 3a4 4 0 01-5.656-5.656m-1.656-4l3-3a4 4 0 015.656 5.656l-1.5 1.5" />
   </svg>
 );
+const FlaskIcon = () => (
+  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+      d="M14.121 4v6.394l4.243 7.07A2 2 0 0116.706 21H7.294a2 2 0 01-1.658-3.536l4.243-7.07V4M9 4h6" />
+  </svg>
+);
 const ChevronIcon = ({ collapsed }: { collapsed: boolean }) => (
   <svg className={cn('h-4 w-4 transition-transform', collapsed ? 'rotate-180' : '')} fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -92,6 +98,9 @@ export function Sidebar() {
   // itself decide what each role can actually do.
   if (activeOrg) {
     navItems.push({ href: '/settings/members', label: t('members'), icon: <MembersIcon /> });
+    // Activation Lab is a per-org diagnostic surface: any member can read,
+    // but only ADMIN+ sees the action buttons inside the page.
+    navItems.push({ href: '/settings/activation-lab', label: t('activationLab'), icon: <FlaskIcon /> });
   }
   if (user?.isSystemAdmin) {
     navItems.push({ href: '/settings/providers', label: t('providerConfigs'), icon: <PluginIcon /> });
