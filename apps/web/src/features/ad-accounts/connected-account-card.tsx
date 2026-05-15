@@ -29,6 +29,11 @@ export function ConnectedAccountCard({ account }: Props) {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['ad-accounts', activeOrg!.id] }),
   });
 
+  const untrack = useMutation({
+    mutationFn: () => adAccountsApi.setTracked(activeOrg!.id, account.id, false),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['ad-accounts', activeOrg!.id] }),
+  });
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
       <div className="flex items-start justify-between gap-3">
@@ -80,7 +85,7 @@ export function ConnectedAccountCard({ account }: Props) {
       </dl>
 
       {canManage && (
-        <div className="mt-4 flex justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-700">
+        <div className="mt-4 flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3 dark:border-slate-700">
           <Button
             variant="outline"
             size="sm"
@@ -88,6 +93,15 @@ export function ConnectedAccountCard({ account }: Props) {
             loading={sync.isPending}
           >
             {t('actions.sync')}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => untrack.mutate()}
+            loading={untrack.isPending}
+            title={t('actions.untrackHint')}
+          >
+            {t('actions.untrack')}
           </Button>
           <Button
             variant="ghost"

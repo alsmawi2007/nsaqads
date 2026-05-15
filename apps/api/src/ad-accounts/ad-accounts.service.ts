@@ -134,4 +134,48 @@ export class AdAccountsService {
 
     return { synced: campaigns.length };
   }
+
+  // ─── Tracking opt-in ──────────────────────────────────────────────────────
+  // Token refresh schedulers and the metrics ingestion cron only operate on
+  // accounts where isTracked=true. OAuth pulls every ad account the granted
+  // user can manage (can be hundreds) and stores them with isTracked=false
+  // so the admin curates which ones the platform should actively work on.
+
+  async setTracked(orgId: string, accountId: string, isTracked: boolean, userId: string) {
+    const account = await this.prisma.adAccount.findFirst({ where: { id: accountId, orgId } });
+    if (!account) throw new NotFoundException('Ad account not found');
+
+    const updated = await this.prisma.adAccount.update({
+      where: { id: accountId },
+      data:  { isTracked },
+    });
+
+    await this.audit.log({
+      orgId, userId,
+      action: isTracked ? 'ad_account.track' : 'ad_account.untrack',
+      resourceType: 'AdAccount', resourceId: accountId,
+      beforeState: { isTracked: account.isTracked },
+      afterState:  { isTracked },
+    });
+
+    return { ...updated, accessToken: '[encrypted]', refreshToken: updated.refreshToken ? '[encrypted]' : null };
+  }
+
+  // Bulk variant — flips many accounts in a single transaction. Audit log
+  // records the count rather than every id so the entry stays scannable.
+  async bulkSetTracked(orgId: string, accountIds: string[], isTracked: boolean, userId: string) {
+    const result = await this.prisma.adAccount.updateMany({
+      where: { id: { in: accountIds }, orgId },
+      data:  { isTracked },
+    });
+
+    await this.audit.log({
+      orgId, userId,
+      action: isTracked ? 'ad_account.bulk_track' : 'ad_account.bulk_untrack',
+      resourceType: 'AdAccount',
+      afterState: { isTracked, count: result.count, requestedIds: accountIds.length },
+    });
+
+    return { updated: result.count };
+  }
 }

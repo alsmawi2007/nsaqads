@@ -592,10 +592,34 @@
       "tokenExpires": "Token expires"
     },
     "actions": {
-      "sync":       "Sync campaigns",
-      "disconnect": "Disconnect"
+      "sync":         "Sync campaigns",
+      "disconnect":   "Disconnect",
+      "untrack":      "Stop tracking",
+      "untrackHint":  "Move this account to Available — keeps the connection but pauses token refresh + metrics ingestion + scheduled sync."
     },
     "confirmDisconnect": "Disconnect {name}? The encrypted tokens will be deleted and no further API calls will be made to this account.",
+    "tabs": {
+      "tracked":   "Tracked",
+      "available": "Available"
+    },
+    "tracked": {
+      "empty": "No accounts are being actively tracked yet. OAuth pulls every ad account you can manage, but only tracked ones are refreshed, synced, and ingested.",
+      "gotoAvailable": "Pick from {count} available"
+    },
+    "available": {
+      "empty": "No ad accounts available. Connect a platform below to pull yours.",
+      "noMatch": "No accounts match your search.",
+      "searchPlaceholder": "Search by name, id, or platform…",
+      "showing": "Showing {count} of {total}",
+      "trackOne":  "Track",
+      "selectRow": "Select {name}"
+    },
+    "bulk": {
+      "selectAll":     "Select all visible",
+      "clear":         "Clear",
+      "selected":      "{count, plural, =0 {} other {· # selected}}",
+      "trackSelected": "{count, plural, =0 {Track selected} =1 {Track 1 account} other {Track # accounts}}"
+    },
     "connected": {
       "title": "{count, plural, =0 {No connected accounts yet} =1 {1 connected account} other {# connected accounts}}",
       "empty": "Once you connect a platform below, your ad accounts will appear here. The Campaign Architect needs at least one account to launch a campaign."
@@ -610,7 +634,8 @@
     },
     "callback": {
       "successTitle": "{platform} connected",
-      "successBody": "{count, plural, =0 {No ad accounts were linked — the authenticated platform user has no manageable accounts.} =1 {1 ad account is now linked. Tokens are encrypted at rest and refresh automatically.} other {# ad accounts are now linked. Tokens are encrypted at rest and refresh automatically.}}",
+      "successBody": "{count, plural, =0 {No ad accounts were linked — the authenticated platform user has no manageable accounts.} =1 {1 ad account is now available. Switch to Available to opt in to tracking.} other {# ad accounts are now available. Switch to Available to pick which ones to track — only tracked accounts run through metrics ingestion and scheduled sync.}}",
+      "bulkHint":    "Imported accounts start untracked. Pick the ones you care about before the cron fans out.",
       "errorTitle": "{platform} connection failed",
       "dismiss": "Dismiss"
     }

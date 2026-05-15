@@ -10,6 +10,11 @@ export interface AdAccount {
   currency:        string | null;
   timezone:        string | null;
   status:          'ACTIVE' | 'INACTIVE' | 'ERROR' | 'EXPIRED' | 'MOCK';
+  // Opt-in flag. Only tracked accounts run token refresh + metrics ingestion
+  // + scheduled sync. Default false on new OAuth connections so the admin
+  // can curate which accounts the platform actively works on (the OAuth
+  // import may yield hundreds).
+  isTracked:       boolean;
   errorMessage:    string | null;
   tokenExpiresAt:  string | null;
   createdAt:       string;
@@ -42,4 +47,17 @@ export const adAccountsApi = {
 
   sync: (orgId: string, accountId: string): Promise<SyncResult> =>
     api.post<SyncResult>(`/orgs/${orgId}/ad-accounts/${accountId}/sync`),
+
+  setTracked: (orgId: string, accountId: string, isTracked: boolean): Promise<AdAccount> =>
+    api.patch<AdAccount>(`/orgs/${orgId}/ad-accounts/${accountId}/tracked`, { isTracked }),
+
+  bulkSetTracked: (
+    orgId: string,
+    accountIds: string[],
+    isTracked: boolean,
+  ): Promise<{ updated: number }> =>
+    api.post<{ updated: number }>(
+      `/orgs/${orgId}/ad-accounts/bulk-tracked`,
+      { accountIds, isTracked },
+    ),
 };

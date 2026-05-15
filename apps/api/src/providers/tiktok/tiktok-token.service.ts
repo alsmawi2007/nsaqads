@@ -98,6 +98,7 @@ export class TikTokTokenService {
       where: {
         platform:  Platform.TIKTOK,
         deletedAt: null,
+        isTracked: true,
         status:    { in: [AdAccountStatus.ACTIVE, AdAccountStatus.PAUSED] },
         OR: [
           { tokenExpiresAt: null },

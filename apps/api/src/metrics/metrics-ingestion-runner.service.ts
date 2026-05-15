@@ -55,10 +55,18 @@ export class MetricsIngestionRunnerService {
     const entities: MetricsIngestionEntityResultDto[] = [];
 
     for (const orgId of orgIds) {
-      // Active campaigns only: status not deleted, optimizer flag set, no soft-delete.
-      // We do not filter by optimizerEnabled here — ingestion is independent of automation.
+      // Active campaigns only: not soft-deleted, and the parent ad account
+      // is opted-in to tracking. Untracked accounts (default after OAuth
+      // imports the user's full account list) are intentionally skipped so
+      // the scheduler doesn't fan out to hundreds of irrelevant accounts.
+      // optimizerEnabled is NOT a filter here — ingestion is independent of
+      // automation.
       const campaigns = await this.prisma.campaign.findMany({
-        where: { orgId, deletedAt: null },
+        where: {
+          orgId,
+          deletedAt: null,
+          adAccount: { isTracked: true },
+        },
         select: {
           id: true,
           orgId: true,

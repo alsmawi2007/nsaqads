@@ -100,6 +100,7 @@ export class SnapchatTokenService {
       where: {
         platform:  Platform.SNAPCHAT,
         deletedAt: null,
+        isTracked: true,
         status:    { in: [AdAccountStatus.ACTIVE, AdAccountStatus.PAUSED] },
         OR: [
           { tokenExpiresAt: null },

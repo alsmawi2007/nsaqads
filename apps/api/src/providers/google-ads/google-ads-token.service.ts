@@ -119,6 +119,7 @@ export class GoogleAdsTokenService {
       where: {
         platform:  Platform.GOOGLE_ADS,
         deletedAt: null,
+        isTracked: true,
         status:    { in: [AdAccountStatus.ACTIVE, AdAccountStatus.PAUSED] },
         OR: [
           { tokenExpiresAt: null },

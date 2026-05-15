@@ -388,6 +388,11 @@ model AdAccount {
   refreshToken   String?         @map("refresh_token")
   tokenExpiresAt DateTime?       @map("token_expires_at")
   status         AdAccountStatus @default(ACTIVE)
+  // Opt-in flag: only "tracked" accounts run through token refresh, metrics
+  // ingestion, and campaign sync. OAuth pulls every account the granted
+  // user can manage, which can be hundreds — defaulting to false here lets
+  // the admin curate which accounts the platform should actively optimize.
+  isTracked     Boolean          @default(false) @map("is_tracked")
   lastSyncedAt   DateTime?       @map("last_synced_at")
   errorMessage   String?         @map("error_message")
   deletedAt      DateTime?       @map("deleted_at")
@@ -400,6 +405,7 @@ model AdAccount {
 
   @@unique([orgId, platform, externalId])
   @@index([orgId])
+  @@index([orgId, isTracked])
   @@map("ad_accounts")
 }
 

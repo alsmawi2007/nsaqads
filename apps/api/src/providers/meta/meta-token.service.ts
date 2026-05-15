@@ -102,6 +102,7 @@ export class MetaTokenService {
       where: {
         platform:  Platform.META,
         deletedAt: null,
+        isTracked: true,
         status:    { in: [AdAccountStatus.ACTIVE, AdAccountStatus.PAUSED] },
         OR: [
           { tokenExpiresAt: null },

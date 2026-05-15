@@ -1,7 +1,8 @@
 import {
-  Controller, Get, Post, Delete, Body, Param, UseGuards, HttpCode, HttpStatus,
+  Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
+import { IsArray, IsBoolean, IsString } from 'class-validator';
 import { MemberRole } from '@prisma/client';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { OrgMemberGuard } from '../common/guards/org-member.guard';
@@ -10,6 +11,18 @@ import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AdAccountsService } from './ad-accounts.service';
 import { ConnectAdAccountDto } from './dto/connect-account.dto';
+
+class SetTrackedDto {
+  @IsBoolean()
+  isTracked!: boolean;
+}
+
+class BulkTrackedDto {
+  @IsArray() @IsString({ each: true })
+  accountIds!: string[];
+  @IsBoolean()
+  isTracked!: boolean;
+}
 
 @ApiTags('Ad Accounts')
 @ApiBearerAuth()
@@ -73,5 +86,30 @@ export class AdAccountsController {
     @CurrentUser() user: { sub: string },
   ) {
     return this.service.sync(accountId, orgId, user.sub);
+  }
+
+  @Patch(':accountId/tracked')
+  @UseGuards(RolesGuard)
+  @Roles(MemberRole.ADMIN)
+  @ApiOperation({ summary: 'Toggle isTracked for a single ad account (ADMIN+). Untracked accounts skip token refresh + metrics ingestion + scheduled sync.' })
+  setTracked(
+    @Param('orgId') orgId: string,
+    @Param('accountId') accountId: string,
+    @Body() dto: SetTrackedDto,
+    @CurrentUser() user: { sub: string },
+  ) {
+    return this.service.setTracked(orgId, accountId, dto.isTracked, user.sub);
+  }
+
+  @Post('bulk-tracked')
+  @UseGuards(RolesGuard)
+  @Roles(MemberRole.ADMIN)
+  @ApiOperation({ summary: 'Bulk-set isTracked for an array of ad account ids (ADMIN+). All ids must belong to the org or they are silently ignored.' })
+  bulkSetTracked(
+    @Param('orgId') orgId: string,
+    @Body() dto: BulkTrackedDto,
+    @CurrentUser() user: { sub: string },
+  ) {
+    return this.service.bulkSetTracked(orgId, dto.accountIds, dto.isTracked, user.sub);
   }
 }
